@@ -1,0 +1,90 @@
+:root {
+  --game-w: 1919px;
+  --game-h: 1151px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: black;
+  overflow: hidden;
+}
+
+/* background */
+#viewport {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(#0d1b2a, #030712);
+  overflow: hidden;
+}
+
+/* stars */
+#stars {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: white;
+  opacity: 0.6;
+}
+
+/* gameview */
+#game-scale {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform-origin: center;
+}
+
+#game {
+  width: 1919px;
+  height: 1151px;
+  position: relative;
+  overflow: hidden;
+}
+
+/*window */
+#world {
+  position: absolute;
+  width: 100%;
+  height: 6000px;
+  top: 0;
+  left: 0;
+}
+
+/*cloud (interactable) */
+.cloud {
+  height: 150px;
+  width: 400px;
+  --g: radial-gradient(50% 50%, #000 98%, #0000) no-repeat;
+  mask: var(--g) 100% 100%/30% 60%, var(--g) 70% 0/50% 100%, var(--g) 0 100%/36% 68%, var(--g) 27% 18%/26% 40%, linear-gradient(#000 0 0) bottom/67% 58% no-repeat;
+  -webkit-mask: var(--g) 100% 100%/30% 60%, var(--g) 70% 0/50% 100%, var(--g) 0 100%/36% 68%, var(--g) 27% 18%/26% 40%, linear-gradient(#000 0 0) bottom/67% 58% no-repeat;
+  background: white;
+  position: absolute;
+}
+
+
+
+/*charac*/
+#player {
+  width: 40px;
+  height: 80px;
+  background: crimson;
+  border-radius: 30px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+}
