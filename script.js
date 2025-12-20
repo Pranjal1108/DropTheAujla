@@ -1,4 +1,3 @@
-/* ================= SCALE ================= */
 const gameScale = document.getElementById("game-scale");
 
 function scaleGame() {
@@ -12,51 +11,47 @@ function scaleGame() {
 window.addEventListener("resize", scaleGame);
 scaleGame();
 
-/* ================= ELEMENTS ================= */
 const world = document.getElementById("world");
 const player = document.getElementById("player");
 const ground = document.getElementById("ground");
 
-/* ================= CONSTANTS ================= */
 const SCREEN_W = 1919;
 const SCREEN_H = 1151;
-const WORLD_H = 8000;
+const WORLD_H = world.offsetHeight;
 
 const PLAYER_SIZE = 60;
-const PLAYER_RADIUS = PLAYER_SIZE / 2;
+const PLAYER_RADIUS = PLAYER_SIZE / 1.8;
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
 
-/* ===== DEADZONES (FULL SCREEN) ===== */
 const TOP_DEADZONE = SCREEN_H;
 const BOTTOM_DEADZONE = SCREEN_H;
 
 player.style.width = PLAYER_SIZE + "px";
 player.style.height = PLAYER_SIZE + "px";
 
-/* ================= PHYSICS ================= */
 let camX = 0;
 let camY = 0;
-let velX = 2.2;
+let velX = 0;
 let velY = 0;
+
+let angle = 0;
+let angVel = 0;
 
 let gravityEnabled = false;
 
-const GRAVITY = 0.6;
-const MAX_FALL = 20;
-const FRICTION = 0.88;
-const AIR_FRICTION = 0.99;
+const GRAVITY = 0.35;
+const MAX_FALL = 16;
+const GROUND_FRICTION = 0.99;
+const AIR_FRICTION = 0.995;
+const RESTITUTION = 0.4;
 
-/* ================= INPUT ================= */
 window.addEventListener("keydown", e => {
-  if (e.code === "Space") {
-    gravityEnabled = true;
-  }
+  if (e.code === "Space") gravityEnabled = true;
 });
 
-/* ================= CLOUDS ================= */
 const clouds = [];
-const CLOUD_COUNT = 200;
+const CLOUD_COUNT = 800;
 
 function spawnCloud(x, y) {
   const cloudEl = document.createElement("div");
@@ -81,18 +76,15 @@ function spawnCloud(x, y) {
   clouds.push({ circles });
 }
 
-/* ===== SPAWN CLOUDS (RESPECT DEADZONES) ===== */
 for (let i = 0; i < CLOUD_COUNT; i++) {
   const x = Math.random() * SCREEN_W * 5;
   const y =
     TOP_DEADZONE +
-    Math.random() *
-      (WORLD_H - TOP_DEADZONE - BOTTOM_DEADZONE);
+    Math.random() * (WORLD_H - TOP_DEADZONE - BOTTOM_DEADZONE);
 
   spawnCloud(x, y);
 }
 
-/* ================= COLLISION ================= */
 function resolveCollisions() {
   let onGround = false;
 
@@ -115,32 +107,32 @@ function resolveCollisions() {
         camY += ny * penetration;
 
         const dot = velX * nx + velY * ny;
-        velX -= nx * dot;
-        velY -= ny * dot;
 
-        velX *= 0.98;
-        velY *= 0.98;
+        velX -= (1 + RESTITUTION) * dot * nx;
+        velY -= (1 + RESTITUTION) * dot * ny;
 
-        if (ny < -0.7) onGround = true;
+        const tx = -ny;
+        const ty = nx;
+        const tangentialVel = velX * tx + velY * ty;
+        angVel += tangentialVel * 0.04;
+
+        if (ny < -0.8 && velY > 0) onGround = true;
       }
     }
   }
 
-  /* ===== SOLID GROUND ===== */
   const groundTop = WORLD_H - ground.offsetHeight;
   const playerBottom = camY + PLAYER_Y + PLAYER_RADIUS;
 
   if (playerBottom > groundTop) {
     camY = groundTop - PLAYER_Y - PLAYER_RADIUS;
     velY = 0;
+    angVel *= 0.92;
     onGround = true;
   }
 
   return onGround;
 }
-
-/* ================= LOOP ================= */
-let angle = 0;
 
 function update() {
   const onGround = resolveCollisions();
@@ -148,13 +140,13 @@ function update() {
   if (gravityEnabled && !onGround) velY += GRAVITY;
   if (velY > MAX_FALL) velY = MAX_FALL;
 
-  camX += velX;
-  camY += velY;
+  camX += velX * 0.9;
+  camY += velY * 0.9;
 
-  velX *= onGround ? FRICTION : AIR_FRICTION;
+  velX *= onGround ? GROUND_FRICTION : AIR_FRICTION;
 
-  angle += velX * 2;
-  angle *= 0.92;
+  angle += angVel;
+  angVel *= onGround ? 0.96 : 0.995;
 
   player.style.transform =
     `translate(-50%, -50%) rotate(${angle}deg)`;
