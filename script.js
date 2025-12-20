@@ -1,182 +1,166 @@
-//game
+/* ================= SCALE ================= */
 const gameScale = document.getElementById("game-scale");
 
 function scaleGame() {
-  const scale = Math.min(window.innerWidth / 1919, window.innerHeight / 1151);
+  const scale = Math.min(
+    window.innerWidth / 1919,
+    window.innerHeight / 1151
+  );
   gameScale.style.transform = `scale(${scale})`;
 }
+
 window.addEventListener("resize", scaleGame);
 scaleGame();
 
-
+/* ================= ELEMENTS ================= */
 const world = document.getElementById("world");
 const player = document.getElementById("player");
-const starsContainer = document.getElementById("stars");
+const ground = document.getElementById("ground");
 
-/*window */
-const SCREEN_WIDTH = 1919;
-const SCREEN_HEIGHT = 1151;
-const WORLD_HEIGHT = 8000;
-const SAFE_ZONE_HEIGHT = 400;
+/* ================= CONSTANTS ================= */
+const SCREEN_W = 1919;
+const SCREEN_H = 1151;
+const WORLD_H = 8000;
 
-/*player */
-const PLAYER_WIDTH = 60;
-const PLAYER_HEIGHT = 80;
-const PLAYER_X = SCREEN_WIDTH / 2;
-const PLAYER_Y = SCREEN_HEIGHT / 2;
+const PLAYER_SIZE = 60;
+const PLAYER_RADIUS = PLAYER_SIZE / 2;
+const PLAYER_X = SCREEN_W / 2;
+const PLAYER_Y = SCREEN_H / 2;
 
-player.style.width = PLAYER_WIDTH + "px";
-player.style.height = PLAYER_HEIGHT + "px";
-player.style.left = PLAYER_X + "px";
-player.style.top = PLAYER_Y + "px";
+/* ===== DEADZONES (FULL SCREEN) ===== */
+const TOP_DEADZONE = SCREEN_H;
+const BOTTOM_DEADZONE = SCREEN_H;
 
-/* movement */
-let worldOffsetX = 0;
-let worldOffsetY = 0;
-let worldVelocityY = 0;
-let velX = 0;
-let onGround = false;
+player.style.width = PLAYER_SIZE + "px";
+player.style.height = PLAYER_SIZE + "px";
 
-const gravity = 0.45;
-const MAX_FALL_SPEED = 15;
-const friction = 0.85;
-const bounceLoss = 0.3;
-const MAX_CORRECTION = 60;
-const PLAYER_COLLIDE_RADIUS = Math.min(PLAYER_WIDTH, PLAYER_HEIGHT) * 0.35;
-const EPS = 1e-6;
+/* ================= PHYSICS ================= */
+let camX = 0;
+let camY = 0;
+let velX = 2.2;
+let velY = 0;
 
-/*star*/
-for (let i = 0; i < 200; i++) {
-  const s = document.createElement("div");
-  s.className = "star";
-  s.style.left = Math.random() * 100 + "%";
-  s.style.top = Math.random() * 100 + "%";
-  starsContainer.appendChild(s);
-}
+let gravityEnabled = false;
 
-/*cloud */
+const GRAVITY = 0.6;
+const MAX_FALL = 20;
+const FRICTION = 0.88;
+const AIR_FRICTION = 0.99;
+
+/* ================= INPUT ================= */
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    gravityEnabled = true;
+  }
+});
+
+/* ================= CLOUDS ================= */
 const clouds = [];
-const CLOUD_COUNT = 60;
+const CLOUD_COUNT = 200;
 
-for (let i = 0; i < CLOUD_COUNT; i++) {
+function spawnCloud(x, y) {
   const cloudEl = document.createElement("div");
   cloudEl.className = "cloud";
 
-  const w = 180 + Math.random() * 260;
-  const h = 60 + Math.random() * 40;
-  const x = Math.random() * (SCREEN_WIDTH - w);
-  const y = PLAYER_Y + SAFE_ZONE_HEIGHT + (i * (WORLD_HEIGHT / CLOUD_COUNT));
+  const width = 160 + Math.random() * 120;
+  const height = 60 + Math.random() * 60;
 
-  cloudEl.style.width = w + "px";
-  cloudEl.style.height = h + "px";
+  cloudEl.style.width = width + "px";
+  cloudEl.style.height = height + "px";
   cloudEl.style.left = x + "px";
   cloudEl.style.top = y + "px";
 
   world.appendChild(cloudEl);
 
-  // hitbox
-  const ellipse = {
-    cx: x + w / 2,
-    cy: y + h / 2,
-    rx: w * 0.45,
-    ry: h * 0.45
-  };
+  const circles = [
+    { x: x + width * 0.3, y: y + height * 0.5, r: width * 0.18 },
+    { x: x + width * 0.55, y: y + height * 0.3, r: width * 0.23 },
+    { x: x + width * 0.8, y: y + height * 0.5, r: width * 0.18 },
+  ];
 
-  clouds.push({ x, y, w, h, ellipse });
+  clouds.push({ circles });
 }
 
-/*Collisons*/
-function checkCollisions() {
-  const pCenterXWorld = worldOffsetX + PLAYER_X + PLAYER_WIDTH / 2;
-  const pCenterYWorld = worldOffsetY + PLAYER_Y + PLAYER_HEIGHT / 2;
-  const playerR = PLAYER_COLLIDE_RADIUS;
+/* ===== SPAWN CLOUDS (RESPECT DEADZONES) ===== */
+for (let i = 0; i < CLOUD_COUNT; i++) {
+  const x = Math.random() * SCREEN_W * 5;
+  const y =
+    TOP_DEADZONE +
+    Math.random() *
+      (WORLD_H - TOP_DEADZONE - BOTTOM_DEADZONE);
 
-  let nearest = null;
-  let minDist = Infinity;
+  spawnCloud(x, y);
+}
+
+/* ================= COLLISION ================= */
+function resolveCollisions() {
+  let onGround = false;
+
+  const px = camX + PLAYER_X;
+  const py = camY + PLAYER_Y;
 
   for (const cloud of clouds) {
-    const e = cloud.ellipse;
-    const dx = pCenterXWorld - e.cx;
-    const dy = pCenterYWorld - e.cy;
-    const d = Math.hypot(dx, dy);
-
-    //distances for ellipse
-    const nx = dx / e.rx;
-    const ny = dy / e.ry;
-    const dist = Math.hypot(nx, ny);
-
-    if (dist < 1) { // innerellipse
-      const b = d / dist; // boundary
-      const overlap = b - d + playerR;
-      const normX = dx / d;
-      const normY = dy / d;
+    for (const c of cloud.circles) {
+      const dx = px - c.x;
+      const dy = py - c.y;
+      const dist = Math.hypot(dx, dy);
+      const minDist = PLAYER_RADIUS + c.r;
 
       if (dist < minDist) {
-        minDist = dist;
-        nearest = { dx, dy, d, dist, overlap, normX, normY, ellipse: e };
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const penetration = minDist - dist;
+
+        camX += nx * penetration;
+        camY += ny * penetration;
+
+        const dot = velX * nx + velY * ny;
+        velX -= nx * dot;
+        velY -= ny * dot;
+
+        velX *= 0.98;
+        velY *= 0.98;
+
+        if (ny < -0.7) onGround = true;
       }
     }
   }
 
-  if (!nearest) {
-    onGround = false;
-    return;
-  }
+  /* ===== SOLID GROUND ===== */
+  const groundTop = WORLD_H - ground.offsetHeight;
+  const playerBottom = camY + PLAYER_Y + PLAYER_RADIUS;
 
-  const { overlap, normX, normY } = nearest;
-
-  let corrX = normX * overlap;
-  let corrY = normY * overlap;
-
-  corrX = Math.max(-MAX_CORRECTION, Math.min(MAX_CORRECTION, corrX));
-  corrY = Math.max(-MAX_CORRECTION, Math.min(MAX_CORRECTION, corrY));
-
-  worldOffsetX -= corrX;
-  worldOffsetY -= corrY;
-
-  let vx = velX;
-  let vy = worldVelocityY;
-
-  const normalVel = vx * normX + vy * normY;
-
-  if (normalVel < 0) {
-    const restitution = bounceLoss;
-    const impulseFactor = 1 + restitution;
-    const dvx = -normX * normalVel * impulseFactor;
-    const dvy = -normY * normalVel * impulseFactor;
-
-    vx += dvx;
-    vy += dvy;
-  }
-
-  if (normY < -0.5) {
+  if (playerBottom > groundTop) {
+    camY = groundTop - PLAYER_Y - PLAYER_RADIUS;
+    velY = 0;
     onGround = true;
-    if (vy > 0) vy = 0;
-    vx *= 0.9;
-  } else {
-    onGround = false;
   }
 
-  velX = vx;
-  worldVelocityY = vy;
-
-  worldOffsetY = Math.max(0, Math.min(WORLD_HEIGHT - SCREEN_HEIGHT, worldOffsetY));
+  return onGround;
 }
 
-/*UPDATE*/
+/* ================= LOOP ================= */
+let angle = 0;
+
 function update() {
-  worldVelocityY += gravity;
-  worldVelocityY = Math.min(worldVelocityY, MAX_FALL_SPEED);
-  worldOffsetY += worldVelocityY;
+  const onGround = resolveCollisions();
 
-  checkCollisions();
+  if (gravityEnabled && !onGround) velY += GRAVITY;
+  if (velY > MAX_FALL) velY = MAX_FALL;
 
-  velX *= friction;
-  worldOffsetX += velX;
+  camX += velX;
+  camY += velY;
 
-  const rotation = Math.max(-30, Math.min(velX * 2, 30));
-  player.style.transform = `translate(-50%, -50%) rotate(${rotation}deg)`;
-  world.style.transform = `translate(${-worldOffsetX}px, ${-worldOffsetY}px)`;
+  velX *= onGround ? FRICTION : AIR_FRICTION;
+
+  angle += velX * 2;
+  angle *= 0.92;
+
+  player.style.transform =
+    `translate(-50%, -50%) rotate(${angle}deg)`;
+
+  world.style.transform =
+    `translate(${-camX}px, ${-camY}px)`;
 
   requestAnimationFrame(update);
 }
