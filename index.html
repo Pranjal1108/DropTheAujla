@@ -9,22 +9,33 @@
 <body>
 <main>
   <div id="viewport">
+
+    <div id="bet-bar">
+      <div id="balance">Balance ₹1000</div>
+      <div id="bet-center">
+        <button id="minus">−</button>
+        <input id="betAmount" type="text" readonly />
+        <button id="plus">+</button>
+      </div>
+      <button id="placeBet">BET</button>
+    </div>
+
     <div id="game-scale">
       <div id="game">
         <div id="world">
-          <div id="stars"></div>
           <div id="ground"></div>
-          <div id="jet-placeholder"></div>
-          
         </div>
-        <div id="player">
-  <div id="sprite"></div>
-</div>
 
+        <div id="player">
+          <div id="score">₹0</div>
+          <div id="sprite"></div>
+        </div>
       </div>
     </div>
+
   </div>
 </main>
+
 <script src="script.js"></script>
 </body>
 </html>

@@ -1,4 +1,6 @@
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -37,7 +39,7 @@ body {
   position: absolute;
   bottom: 0;
   width: 100%;
-  height: 120px;
+  height: 400px;
   background: linear-gradient(#19f604, #6b4306);
 }
 
@@ -59,7 +61,6 @@ body {
   background: linear-gradient(135deg, #d5bebe, #9e9e9e);
   border-radius: 30px;
   z-index: 9;
-  pointer-events: none;
 }
 
 #player {
@@ -67,15 +68,114 @@ body {
   z-index: 10;
   left: 50%;
   top: 50%;
-  width: 70px;
-  height: 70px;
   pointer-events: none;
 }
 
 #sprite {
   position: absolute;
   inset: -20px;
-  background: url('aujla.png') no-repeat center/contain;
+  background: url("aujla.png") no-repeat center/contain;
   transform-origin: center;
+}
+
+#score {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-top: 10px;
+  transform: translateX(-50%);
+  font-family: monospace;
+  font-size: 26px;
+  font-weight: bold;
+  color: #00ff66;
+  text-shadow: 0 0 10px rgba(0,255,100,0.9);
+}
+
+/* =========================
+   BIG BET PANEL (THE UNIT)
+   ========================= */
+
+#bet-bar {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+
+  width: 85%;
+  height: 200px;
+
+  background: #2a2a2a;
+  border-radius: 20px 20px 0 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 60px;
+  font-family: Arial, sans-serif;
+  color: white;
+
+  z-index: 1000;
+}
+
+#balance {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+#bet-center {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+#bet-center button {
+  width: 120px;
+  height: 120px;
+
+  font-size: 64px;
+  font-weight: bold;
+
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+
+  background: #444;
+  color: white;
+}
+
+#betAmount {
+  width: 220px;
+  height: 150px;
+
+  font-size: 58px;
+  text-align: center;
+
+  border-radius: 24px;
+  border: none;
+  outline: none;
+}
+
+#placeBet {
+  width: 250px;
+  height: 150px;
+
+  font-size: 58px;
+  font-weight: bold;
+
+  border-radius: 50%;
+  border: 4px solid #555;
+
+  background: #111;
+  color: white;
+  cursor: pointer;
+}
+
+.multiplier {
+  position: absolute;
+  font-size: 36px;
+  font-weight: bold;
+  color: gold;
+  text-shadow: 0 0 15px rgba(255,215,0,0.9);
   pointer-events: none;
 }
