@@ -1,9 +1,3 @@
-/*  
-—————————————————————————
-YES, IT'S THE FULL UPDATED SCRIPT
-—————————————————————————
-*/
-
 const gameScale = document.getElementById("game-scale");
 
 function scaleGame() {
@@ -18,6 +12,8 @@ const player = document.getElementById("player");
 const ground = document.getElementById("ground");
 const scoreEl = document.getElementById("score");
 
+world.style.pointerEvents = "none";
+
 const betInput = document.getElementById("betAmount");
 const betBtn = document.getElementById("placeBet");
 const plusBtn = document.getElementById("plus");
@@ -27,31 +23,27 @@ const balanceEl = document.getElementById("balance");
 let balance = 1000;
 let betAmount = 10;
 
-function updateBalanceUI() {
-  balanceEl.textContent = `Balance ₹${balance.toFixed(2)}`;
-  betInput.value = betAmount;
-}
-updateBalanceUI();
-
 const SCREEN_W = 1919;
 const SCREEN_H = 1151;
-const WORLDH = 20000;
+const WORLDH = 30000;
+const DEADZONE = 300;
 
-const GROUND_HEIGHT = 400;
+const GROUND_HEIGHT = SCREEN_H / 2; 
+ground.style.height = GROUND_HEIGHT + "px";
+ground.style.width = SCREEN_W + "px";
+ground.style.top = (WORLDH - GROUND_HEIGHT) + "px";
 
-const PLAYER_SIZE = 180;
+
+const PLAYER_SIZE = 140;
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
 
 player.style.width = PLAYER_SIZE + "px";
 player.style.height = PLAYER_SIZE + "px";
 
-let camX = 0;
-let camY = 0;
-let velX = 0;
-let velY = 0;
-let angle = 0;
-let angVel = 0;
+let camX = 0, camY = 0;
+let velX = 0, velY = 0;
+let angle = 0, angVel = 0;
 
 let fallStarted = false;
 let betPlaced = false;
@@ -66,77 +58,113 @@ const INERTIA = 30000;
 
 let earnings = 0;
 let lastCamY = 0;
-let skillMultiplier = 1;
-let riskMultiplier = 1;
 
+function lockBetUI() {
+  plusBtn.disabled = true;
+  minusBtn.disabled = true;
+  betInput.disabled = true;
+  betBtn.disabled = true;
+  document.querySelectorAll(".chip").forEach(c => c.disabled = true);
+}
 
-// ————————— BET UI —————————
+function unlockBetUI() {
+  plusBtn.disabled = false;
+  minusBtn.disabled = false;
+  betInput.disabled = false;
+  betBtn.disabled = false;
+  document.querySelectorAll(".chip").forEach(c => c.disabled = false);
+}
+
+function updateBalanceUI() {
+  balanceEl.textContent = `Balance ₹${balance.toFixed(2)}`;
+  betInput.value = betAmount;
+  betBtn.disabled = betAmount > balance || betAmount <= 0 || fallStarted;
+}
 
 plusBtn.onclick = () => {
-  if (betAmount + 10 <= balance) {
-    betAmount += 10;
-    updateBalanceUI();
-  }
+  if (fallStarted) return;
+  if (betAmount + 10 <= balance) betAmount += 10;
+  updateBalanceUI();
 };
 
 minusBtn.onclick = () => {
+  if (fallStarted) return;
   betAmount = Math.max(10, betAmount - 10);
   updateBalanceUI();
 };
 
+betInput.oninput = () => {
+  if (fallStarted) {
+    betInput.value = betAmount;
+    return;
+  }
+  betAmount = Math.max(10, Math.min(balance, Number(betInput.value) || 10));
+  betInput.value = betAmount;
+  updateBalanceUI();
+};
+
+document.querySelectorAll(".chip").forEach(c => {
+  c.onclick = () => {
+    if (fallStarted) return;
+    const v = c.dataset.v;
+    if (v === "max") betAmount = balance;
+    else betAmount = Math.min(balance, Number(v));
+    updateBalanceUI();
+  };
+});
+
 betBtn.onclick = () => {
+  if (fallStarted || betPlaced) return;
   if (betAmount > balance) return;
+
   balance -= betAmount;
   updateBalanceUI();
 
   camX = camY = velX = velY = angle = angVel = 0;
   earnings = 0;
   lastCamY = 0;
-  skillMultiplier = 1;
-  riskMultiplier = 1;
 
   fallStarted = true;
   betPlaced = true;
   betResolved = false;
+
+  lockBetUI();
 };
 
-
-// ————————— RESET —————————
+updateBalanceUI();
 
 const runOverEl = document.getElementById("runOver");
 
-function hardResetWorld(showLoss = true) {
+function hardResetWorld(showLoss = true, delay = 2000) {
   fallStarted = false;
   betPlaced = false;
   betResolved = true;
 
-  const payout = (earnings * skillMultiplier * riskMultiplier).toFixed(2);
+  const payoutNum = earnings;
+  balance += payoutNum;
+
+  updateBalanceUI();
 
   if (showLoss) {
-    runOverEl.innerHTML = `RUN OVER<br>Total Payout: ₹${payout}`;
+    runOverEl.innerHTML = `RUN OVER<br>Total Winnings: ₹${payoutNum.toFixed(2)}`;
     runOverEl.style.display = "block";
   }
 
   setTimeout(() => {
     clearWorld();
-
     camX = camY = velX = velY = angle = angVel = 0;
     earnings = 0;
     lastCamY = 0;
-    skillMultiplier = 1;
-    riskMultiplier = 1;
-
     runOverEl.style.display = "none";
-
     spawnWorld();
-  }, 2000);
+    unlockBetUI();
+    updateBalanceUI();
+  }, delay);
 }
 
 function clearWorld() {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
-  collectibles.length = 0;
-  chains.length = 0;
-  notes.length = 0;
+  collectibles.length = chains.length = notes.length = 0;
 
   for (const c of clouds) c.el.remove();
   clouds.length = 0;
@@ -145,12 +173,23 @@ function clearWorld() {
   darkClouds.length = 0;
 }
 
-
-// ————————— COLLECTIBLES —————————
-
 const collectibles = [];
 const chains = [];
 const notes = [];
+
+/************* SILVERJET *************/
+const silverjetWrap = document.createElement("div");
+silverjetWrap.style.position = "absolute";
+silverjetWrap.style.pointerEvents = "none";
+silverjetWrap.style.zIndex = "9999999";
+
+const silverjet = document.createElement("div");
+silverjet.className = "silverjet";
+
+silverjetWrap.appendChild(silverjet);
+document.getElementById("game").appendChild(silverjetWrap);
+
+/************************************/
 
 function spawnCollectible() {
   if (!betPlaced) return;
@@ -158,41 +197,33 @@ function spawnCollectible() {
   const type = Math.random();
   const el = document.createElement("div");
 
-  let value = 0;
-  let arr;
+  let value = 0, arr;
 
-  if (type < 0.6) {
+  if (type < 0.55) {
     el.className = "collectible chain";
-    value = 2;
+    value = 3;
     arr = chains;
   } else {
     el.className = "collectible music";
-    value = 5;
+    value = 8;
     arr = notes;
   }
 
   const x = Math.random() * SCREEN_W;
-  const y = camY + SCREEN_H + 600;
+  const y = Math.min(camY + SCREEN_H + 600, WORLDH - GROUND_HEIGHT - DEADZONE - 50);
 
   el.style.left = x + "px";
   el.style.top = y + "px";
 
   world.appendChild(el);
-
   arr.push({ x, y, value, el });
 }
-
-
-
-// ————————— CLOUDS —————————
+setInterval(spawnCollectible, 800);
 
 const clouds = [];
 
-const CLOUD1_W = 320;
-const CLOUD1_H = 160;
-
-const CLOUD2_W = 325;
-const CLOUD2_H = 217;
+const CLOUD1_W = 320, CLOUD1_H = 160;
+const CLOUD2_W = 325, CLOUD2_H = 217;
 
 const CLOUD1 = [
   { x: 0.1329, y: 0.6750, r: 0.0922 },
@@ -226,13 +257,12 @@ function randX() {
 
 function spawnY() {
   const TOP_DEAD = SCREEN_H * 0.7;
-  const BOTTOM_LIMIT = WORLDH - GROUND_HEIGHT - 800;
+  const BOTTOM_LIMIT = WORLDH - GROUND_HEIGHT - DEADZONE;
   return TOP_DEAD + Math.random() * (BOTTOM_LIMIT - TOP_DEAD);
 }
 
 function spawnCloud(x, y) {
   const pick = Math.random() < 0.5 ? 1 : 2;
-
   let el = document.createElement("div");
   el.className = "cloud";
 
@@ -265,12 +295,8 @@ function spawnCloud(x, y) {
   el.style.top = y + "px";
 
   world.appendChild(el);
-
   clouds.push({ x, y, el, circles });
 }
-
-
-// ————————— DARK CLOUDS —————————
 
 const darkClouds = [];
 
@@ -278,17 +304,19 @@ const DARK_W = 280;
 const DARK_H = 187;
 
 const DARK_RECTS = [
-  { w:53,  h:16, x:117, y:36  },
-  { w:121, h:22, x:83,  y:52  },
-  { w:164, h:15, x:58,  y:74  },
-  { w:216, h:40, x:35,  y:89  }
+  { w:53, h:16, x:117, y:36 },
+  { w:121, h:22, x:83, y:52 },
+  { w:164, h:15, x:58, y:74 },
+  { w:216, h:40, x:35, y:89 }
 ];
 
 let grabbedByDarkCloud = false;
 let releaseTime = 0;
 let grabbedCloud = null;
+let freezeX = 0, freezeY = 0;
 
 function spawnDarkCloud(x, y) {
+  if (y > WORLDH - GROUND_HEIGHT - DEADZONE) return;
   const el = document.createElement("div");
   el.className = "dark-cloud";
 
@@ -309,32 +337,21 @@ function spawnDarkCloud(x, y) {
   darkClouds.push({ x, y, el, rects });
 }
 
-
-// ————————— WORLD SPAWN —————————
-
 function spawnWorld() {
-  for (let i = 0; i < 800; i++)
-    spawnCloud(randX(), spawnY());
-
-  for (let i = 0; i < 25; i++)
-    spawnDarkCloud(randX(), spawnY());
+  for (let i = 0; i < 800; i++) spawnCloud(randX(), spawnY());
+  for (let i = 0; i < 25; i++) spawnDarkCloud(randX(), spawnY());
 }
-
 spawnWorld();
 
-
-// ————————— PLAYER PHYSICS —————————
-
 const PLAYER_COLLIDERS = [
-  { offsetX: 0, offsetY: -PLAYER_SIZE * 0.25, r: PLAYER_SIZE * 0.3 },
-  { offsetX: 0, offsetY: 0, r: PLAYER_SIZE * 0.35 },
-  { offsetX: 0, offsetY: PLAYER_SIZE * 0.25, r: PLAYER_SIZE * 0.3 }
+  { offsetX: 0, offsetY: -PLAYER_SIZE * 0.22, r: PLAYER_SIZE * 0.24 },
+  { offsetX: 0, offsetY: 0, r: PLAYER_SIZE * 0.28 },
+  { offsetX: 0, offsetY: PLAYER_SIZE * 0.22, r: PLAYER_SIZE * 0.24 }
 ];
 
 function resolveCollisions() {
   let onGround = false;
 
-  // Cloud Physics
   for (const cloud of clouds) {
     for (const c of cloud.circles) {
       for (const p of PLAYER_COLLIDERS) {
@@ -370,11 +387,9 @@ function resolveCollisions() {
     }
   }
 
-  // DARK CLOUD
   for (const cloud of darkClouds) {
     for (const rect of cloud.rects) {
       for (const p of PLAYER_COLLIDERS) {
-
         const px = camX + PLAYER_X + p.offsetX;
         const py = camY + PLAYER_Y + p.offsetY;
 
@@ -385,10 +400,12 @@ function resolveCollisions() {
         const dy = py - ny;
 
         if ((dx * dx + dy * dy) < p.r * p.r && !grabbedByDarkCloud) {
-
           grabbedByDarkCloud = true;
-          releaseTime = performance.now() + 2000;
+          releaseTime = performance.now() + 1500;
           grabbedCloud = cloud;
+
+          freezeX = camX;
+          freezeY = camY;
 
           velX = 0;
           velY = 0;
@@ -402,7 +419,6 @@ function resolveCollisions() {
     }
   }
 
-  // GROUND
   const groundTop = WORLDH - GROUND_HEIGHT;
 
   if (camY + PLAYER_Y + PLAYER_COLLIDERS[2].r > groundTop) {
@@ -413,9 +429,6 @@ function resolveCollisions() {
 
   return onGround;
 }
-
-
-// ————————— STUCK —————————
 
 let stuckLastY = 0;
 let stuckStartTime = null;
@@ -433,27 +446,20 @@ function checkStuck() {
   if (movement < 5) {
     if (stuckStartTime === null) stuckStartTime = performance.now();
     else if (performance.now() - stuckStartTime >= STUCK_TIME_LIMIT)
-      hardResetWorld(true);
+      hardResetWorld(true, 2000);
   } else stuckStartTime = null;
 }
-
-
-// ————————— UPDATE LOOP —————————
 
 function update() {
 
   if (grabbedByDarkCloud) {
-
-    if (grabbedCloud) {
-      camX = grabbedCloud.x;
-      camY = grabbedCloud.y;
-    }
+    camX = freezeX;
+    camY = freezeY;
 
     if (performance.now() >= releaseTime) {
-
       grabbedByDarkCloud = false;
 
-      const spread = (Math.random() * Math.PI / 2) - (Math.PI / 4);
+      const spread = (Math.random() * Math.PI / 1.7) - (Math.PI / 3.4);
       const power = 30;
 
       velX = Math.sin(spread) * power;
@@ -471,9 +477,7 @@ function update() {
 
   const onGround = resolveCollisions();
 
-  if (fallStarted && !onGround)
-    velY += GRAVITY;
-
+  if (fallStarted && !onGround) velY += GRAVITY;
   velY = Math.min(velY, MAX_FALL);
 
   camX += velX;
@@ -484,20 +488,15 @@ function update() {
 
   angle += angVel;
 
-
-  // ——— NERFED EARNING ———
   if (betPlaced && fallStarted && velY > 0) {
     const fallDistance = camY - lastCamY;
     if (fallDistance > 2)
-      earnings += fallDistance * Math.sqrt(betAmount) * 0.001;
+      earnings += fallDistance * Math.sqrt(betAmount) * 0.0015;
   }
 
-
-  // ——— CHAIN / NOTE COLLECTION ———
   function checkPickup(arr) {
     for (let i = arr.length - 1; i >= 0; i--) {
       const c = arr[i];
-
       if (
         Math.abs(camX + PLAYER_X - c.x) < 120 &&
         Math.abs(camY + PLAYER_Y - c.y) < 120
@@ -512,14 +511,24 @@ function update() {
   checkPickup(chains);
   checkPickup(notes);
 
-
   if (onGround && fallStarted && !betResolved) {
     betResolved = true;
-    const payout = earnings * skillMultiplier * riskMultiplier;
+
+    const payout = earnings;
     balance += payout;
-    updateBalanceUI();
-    betPlaced = false;
+
+    runOverEl.innerHTML = `RUN OVER<br>Total Winnings: ₹${payout.toFixed(2)}`;
+    runOverEl.style.display = "block";
+
     fallStarted = false;
+    betPlaced = false;
+
+    updateBalanceUI();
+
+    setTimeout(() => {
+      runOverEl.style.display = "none";
+      hardResetWorld(false, 0);
+    }, 5000);
   }
 
   lastCamY = camY;
@@ -530,16 +539,20 @@ function update() {
   requestAnimationFrame(update);
 }
 
-
 function render() {
-  scoreEl.textContent =
-    `₹${(earnings * skillMultiplier * riskMultiplier).toFixed(2)}`;
+  scoreEl.textContent = `₹${earnings.toFixed(2)}`;
 
   player.style.transform =
     `translate(-50%, -50%) rotate(${angle}rad)`;
 
   world.style.transform =
     `translate(${-camX}px, ${-camY}px)`;
+
+  // SILVERJET UPDATE
+  silverjetWrap.style.left = (SCREEN_W / 2) + "px";
+  silverjetWrap.style.top  = (SCREEN_H / 2) + "px";
+
+  silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
 }
 
 update();
