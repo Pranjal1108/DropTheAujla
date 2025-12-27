@@ -521,7 +521,7 @@ function update() {
       grabbedByDarkCloud = false;
 
       const spread = (Math.random() * Math.PI / 1.7) - (Math.PI / 3.4);
-      const power = 30;
+      const power = 20;
 
       velX = Math.sin(spread) * power;
       velY = -Math.cos(spread) * power;

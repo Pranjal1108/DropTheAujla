@@ -43,7 +43,7 @@ body {
 /******** DARK CLOUD ********/
 .dark-cloud {
   position: absolute;
-  background: url("clouds/DC2.png") no-repeat center/contain;
+  background: url("clouds/darkcloud.png") no-repeat center/contain;
   pointer-events: none;
   z-index: 100;
 
