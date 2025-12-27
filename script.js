@@ -14,6 +14,7 @@ const scoreEl = document.getElementById("score");
 
 world.style.pointerEvents = "none";
 
+//bet config
 const betInput = document.getElementById("betAmount");
 const betBtn = document.getElementById("placeBet");
 const plusBtn = document.getElementById("plus");
@@ -23,17 +24,20 @@ const balanceEl = document.getElementById("balance");
 let balance = 1000;
 let betAmount = 10;
 
+// World config
 const SCREEN_W = 1919;
 const SCREEN_H = 1151;
 const WORLDH = 30000;
 const DEADZONE = 300;
 
-const GROUND_HEIGHT = SCREEN_H / 2; 
+const GROUND_HEIGHT = SCREEN_H / 2;
 ground.style.height = GROUND_HEIGHT + "px";
-ground.style.width = SCREEN_W + "px";
+ground.style.width = "10000px";
+ground.style.left = "-4000px";
 ground.style.top = (WORLDH - GROUND_HEIGHT) + "px";
 
 
+// Player config
 const PLAYER_SIZE = 140;
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
@@ -45,6 +49,7 @@ let camX = 0, camY = 0;
 let velX = 0, velY = 0;
 let angle = 0, angVel = 0;
 
+// physics config
 let fallStarted = false;
 let betPlaced = false;
 let betResolved = false;
@@ -59,6 +64,7 @@ const INERTIA = 30000;
 let earnings = 0;
 let lastCamY = 0;
 
+// bet UI handling
 function lockBetUI() {
   plusBtn.disabled = true;
   minusBtn.disabled = true;
@@ -162,6 +168,7 @@ function hardResetWorld(showLoss = true, delay = 2000) {
   }, delay);
 }
 
+// WORLD CLEARING
 function clearWorld() {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
   collectibles.length = chains.length = notes.length = 0;
@@ -173,11 +180,11 @@ function clearWorld() {
   darkClouds.length = 0;
 }
 
+// COLLECTIBLES
 const collectibles = [];
 const chains = [];
 const notes = [];
 
-/************* SILVERJET *************/
 const silverjetWrap = document.createElement("div");
 silverjetWrap.style.position = "absolute";
 silverjetWrap.style.pointerEvents = "none";
@@ -188,8 +195,6 @@ silverjet.className = "silverjet";
 
 silverjetWrap.appendChild(silverjet);
 document.getElementById("game").appendChild(silverjetWrap);
-
-/************************************/
 
 function spawnCollectible() {
   if (!betPlaced) return;
@@ -220,6 +225,7 @@ function spawnCollectible() {
 }
 setInterval(spawnCollectible, 800);
 
+// CLOUDS
 const clouds = [];
 
 const CLOUD1_W = 320, CLOUD1_H = 160;
@@ -298,6 +304,7 @@ function spawnCloud(x, y) {
   clouds.push({ x, y, el, circles });
 }
 
+// DARK CLOUDS
 const darkClouds = [];
 
 const DARK_W = 280;
@@ -314,6 +321,10 @@ let grabbedByDarkCloud = false;
 let releaseTime = 0;
 let grabbedCloud = null;
 let freezeX = 0, freezeY = 0;
+
+const skeleton = document.getElementById("skeleton");
+const sprite = document.getElementById("sprite");
+let skeletonFlashInterval = null;
 
 function spawnDarkCloud(x, y) {
   if (y > WORLDH - GROUND_HEIGHT - DEADZONE) return;
@@ -339,10 +350,11 @@ function spawnDarkCloud(x, y) {
 
 function spawnWorld() {
   for (let i = 0; i < 800; i++) spawnCloud(randX(), spawnY());
-  for (let i = 0; i < 25; i++) spawnDarkCloud(randX(), spawnY());
+  for (let i = 0; i < 255; i++) spawnDarkCloud(randX(), spawnY());
 }
 spawnWorld();
 
+// COLLISION
 const PLAYER_COLLIDERS = [
   { offsetX: 0, offsetY: -PLAYER_SIZE * 0.22, r: PLAYER_SIZE * 0.24 },
   { offsetX: 0, offsetY: 0, r: PLAYER_SIZE * 0.28 },
@@ -413,6 +425,17 @@ function resolveCollisions() {
 
           earnings *= 0.5;
 
+          skeleton.style.display = "block";
+          sprite.style.display = "block";
+
+          let showSkeleton = false;
+
+          skeletonFlashInterval = setInterval(() => {
+            showSkeleton = !showSkeleton;
+            skeleton.style.display = showSkeleton ? "block" : "none";
+            sprite.style.display = showSkeleton ? "none" : "block";
+          }, 90);
+
           return false;
         }
       }
@@ -430,10 +453,48 @@ function resolveCollisions() {
   return onGround;
 }
 
+// STUCK CHECK
 let stuckLastY = 0;
 let stuckStartTime = null;
 const STUCK_TIME_LIMIT = 3000;
 
+// STARFIELD
+
+function makeStars(count, size, opacityMin, opacityMax){
+  const field = document.getElementById("starfield");
+
+  const FIELD_W = window.innerWidth;
+  const FIELD_H = window.innerHeight;
+
+  for(let i = 0; i < count; i++){
+    const s = document.createElement("div");
+    s.className = "star";
+
+    const x = Math.random() * FIELD_W;
+    const y = Math.random() * FIELD_H;
+
+    s.style.left = x + "px";
+    s.style.top  = y + "px";
+
+    const scale = size + Math.random()*size;
+    s.style.width  = scale + "px";
+    s.style.height = scale + "px";
+
+    s.style.opacity =
+      (opacityMin + Math.random()*(opacityMax-opacityMin)).toFixed(2);
+
+    s.style.animationDuration = (2 + Math.random()*4) + "s";
+
+    field.appendChild(s);
+  } 
+}
+
+  makeStars(500, 1.2, .2, .6);
+  makeStars(200, 2.0, .4, .8);
+  makeStars(80,  3.5, .6, 1);
+
+
+// UPDATE LOOP
 function checkStuck() {
   if (!betPlaced || !fallStarted) {
     stuckStartTime = null;
@@ -468,6 +529,12 @@ function update() {
       grabbedCloud.el.remove();
       darkClouds.splice(darkClouds.indexOf(grabbedCloud), 1);
       grabbedCloud = null;
+
+      if (skeletonFlashInterval) clearInterval(skeletonFlashInterval);
+      skeletonFlashInterval = null;
+
+      skeleton.style.display = "none";
+      sprite.style.display = "block";
     }
 
     render();
@@ -539,6 +606,7 @@ function update() {
   requestAnimationFrame(update);
 }
 
+// RENDER
 function render() {
   scoreEl.textContent = `₹${earnings.toFixed(2)}`;
 
@@ -548,11 +616,12 @@ function render() {
   world.style.transform =
     `translate(${-camX}px, ${-camY}px)`;
 
-  // SILVERJET UPDATE
   silverjetWrap.style.left = (SCREEN_W / 2) + "px";
   silverjetWrap.style.top  = (SCREEN_H / 2) + "px";
 
   silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
+
+
 }
 
 update();
