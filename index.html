@@ -11,30 +11,26 @@
   <div id="viewport">
 
     <div class="bet-ui">
-  <div class="balance-card" id="balance">Balance ₹1000.00</div>
+      <div class="balance-card" id="balance">Balance ₹1000.00</div>
 
-  <div class="bet-box">
-    <button id="minus">−</button>
-    <input id="betAmount" type="number" min="10" max="999999">
-    <button id="plus">+</button>
-  </div>
+      <div class="bet-box">
+        <button id="minus">−</button>
+        <input id="betAmount" type="number" min="10" max="999999">
+        <button id="plus">+</button>
+      </div>
 
-  <div class="quick-bets">
-    <button class="chip" data-v="10">₹10</button>
-    <button class="chip" data-v="50">₹50</button>
-    <button class="chip" data-v="100">₹100</button>
-    <button class="chip" data-v="max">MAX</button>
-  </div>
+      <div class="quick-bets">
+        <button class="chip" data-v="10">₹10</button>
+        <button class="chip" data-v="50">₹50</button>
+        <button class="chip" data-v="100">₹100</button>
+        <button class="chip" data-v="max">MAX</button>
+      </div>
 
-  <button id="placeBet" class="bet-button">PLACE BET</button>
-</div>
+      <button id="placeBet" class="bet-button">PLACE BET</button>
+    </div>
 
-<div id="starfield"></div>
+    <div id="starfield"></div>
 
-
-
-
-    
     <div id="runOver"></div>
 
     <div id="game-scale">
@@ -44,6 +40,14 @@
         </div>
 
         <div id="player">
+          <div id="player-body">
+          <div class="part head"></div>
+          <div class="part torso"></div>
+          <div class="part left-hand"></div>
+          <div class="part right-hand"></div>
+          <div class="part legs"></div>
+      </div>
+
           <div id="score">₹0</div>
           <div id="sprite"></div>
           <div id="skeleton"></div>

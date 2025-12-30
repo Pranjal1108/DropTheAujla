@@ -18,6 +18,7 @@ body {
   display: grid;
   place-items: center;
   transform-origin: center;
+  z-index: 5;
 }
 
 #game {
@@ -30,14 +31,14 @@ body {
 #world {
   position: absolute;
   width: 100%;
-  height: 20000px;
+  height: 6000px;
+  z-index: 6;
 }
-
 
 /******** CLOUDS ********/
 .cloud {
   position: absolute;
-  filter: drop-shadow(0px 10px 25px rgba(0,0,0,0.18)), brightness(-20%) contrast(1.2);
+  filter: drop-shadow(0px 10px 25px rgba(0,0,0,0.18)) brightness(.9) contrast(1.1);
 }
 
 /******** DARK CLOUD ********/
@@ -46,40 +47,79 @@ body {
   background: url("clouds/darkcloud.png") no-repeat center/contain;
   pointer-events: none;
   z-index: 100;
-
-  /* MAKE IT ACTUALLY VISIBLE */
   filter: brightness(2.2) contrast(1.4);
-
-
-
-  /* LITTLE PULSE TO WARN PLAYER */
   animation: dangerPulse 1.4s infinite ease-in-out;
 }
 
 @keyframes dangerPulse {
   0%   { filter: brightness(2.5) contrast(1.5); }
-  50%  { filter: brightness(3.3) contrast(1.8); }
+  50%  { filter: brightness(2.8) contrast(1.8); }
   100% { filter: brightness(2.5) contrast(1.5); }
-  50% { filter: brightness(3.3) contrast(1.8); }
-  0%   { filter: brightness(2.5) contrast(1.5); }
 }
-
 
 /******** PLAYER ********/
-#player {
-  position: absolute;
-  z-index: 10;
-  left: 50%;
-  top: 50%;
-  pointer-events: none;
+#player{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:10;
+  pointer-events:none;
 }
 
-#sprite {
-  position: absolute;
-  inset: -20px;
-  background: url("aujla.png") no-repeat center/contain;
-  transform-origin: center;
+#player-body{
+  position:absolute;
+  width:123.8px;
+  height:230.12px;
+  left:0;
+  top:0;
 }
+
+.part{
+  position:absolute;
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+}
+
+/* SPRITES GO HERE */
+
+.head{
+  width:96.12px;
+  height:96.12px;
+  z-index:2;
+  background-image:url("items/head.png");
+}
+
+.torso{
+  width:96.12px;
+  height:96.12px;
+  z-index:1;
+  background-image:url("items/body.png");
+}
+
+.left-hand{
+  width:43.8px;
+  height:92.42px;
+  z-index:2;
+  background-image:url("items/lefthand.png");
+}
+
+.right-hand{
+  width:43.8px;
+  height:90.56px;
+  z-index:0;
+  background-image:url("items/righthand.png");
+}
+
+.legs{
+  width:96.12px;
+  height:96.12px;
+  z-index:0;
+  background-image:url("items/legs.png");
+}
+
+
 
 #skeleton {
   position: absolute;
@@ -89,21 +129,32 @@ body {
   display: none;
 }
 
-
-
 #score {
   position: absolute;
-  top: 100%;
   left: 50%;
-  margin-top: 10px;
+  top: calc(230.12px + 18px);
   transform: translateX(-50%);
+  
   font-family: monospace;
-  font-size: 26px;
-  font-weight: bold;
-  color: #00ff66;
-  text-shadow: 0 0 10px rgba(0,255,100,0.9);
+  font-size: 48px;          /* BIG BOI */
+  font-weight: 900;         /* MAXIMUM CHONK */
+  color: #ffffff;
+
+  /* THICK BLACK OUTLINE */
+  -webkit-text-stroke: 3px black;
+
+  /* punchy shadow to separate from clouds */
+  text-shadow:
+    0 0 6px rgba(0,0,0,0.9),
+    0 0 12px rgba(0,0,0,0.9),
+    0 0 18px rgba(0,0,0,0.8);
+  
+  pointer-events: none;
 }
 
+
+
+/******** SILVERJET ********/
 .silverjet {
   position: absolute;
   width: 400px;
@@ -114,19 +165,20 @@ body {
   transform: translate(-50%, -50%) scale(4);
 }
 
-
-/*** GROUND */
-#ground{
-  position:absolute;
-  background:url(items/ground.png);
-  background-repeat:repeat-x;
-  width:10000px;
-  height:400px;
+/******** REAL NEW GROUND ********/
+#ground {
+  position: absolute;
+  width: 5000px;
+  height: 50vh;
+  background: url("items/ground.png") repeat-x;
+  background-size: cover;
+  pointer-events: none;
+  z-index: 999;
+  /* Debug if sanity needed */
+  /* background:red !important; */
 }
 
-
-
-/* STARFIELD */
+/******** STARFIELD ********/
 #starfield {
   position: fixed;
   inset: 0;
@@ -140,9 +192,7 @@ body {
   background: white;
   width: 2px;
   height: 2px;
-
   box-shadow: 0 0 6px 2px rgba(255,255,255,.4);
-
   animation-name: twinkle;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -154,9 +204,7 @@ body {
   100% { opacity: .1; transform: scale(.8); }
 }
 
-
-
-/****** BET PANEL*****/
+/******** BET PANEL ********/
 .bet-ui {
   position: fixed;
   bottom: 40px;
@@ -164,53 +212,38 @@ body {
   transform: translateX(-50%);
   width: 90vw;
   max-width: 100%;
-
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 45px;
-
   background: rgba(255,255,255,0.22);
   border-radius: 48px;
   padding: 38px 46px;
-
   backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
   border: 2px solid rgba(255,255,255,0.55);
-
   box-shadow:
       0 55px 120px rgba(0,0,0,0.65),
       inset 0 0 65px rgba(255,255,255,0.28),
       inset 0 0 120px rgba(255,255,255,0.15);
-
   font-family: Poppins, sans-serif;
   z-index: 999999;
   pointer-events: auto;
 }
 
-
-/****** BALANCE ***/
 .balance-card {
   background: rgba(255,255,255,0.45);
   padding: 30px 48px;
   border-radius: 34px;
-
   color: black;
   font-size: 44px;
   font-weight: 1000;
-
   border: 2px solid rgba(255,255,255,0.75);
-
   backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-
   box-shadow:
     inset 0 0 50px rgba(255,255,255,0.45),
     0 25px 55px rgba(0,0,0,0.35);
 }
 
-
-/**** BET CONTROLS******/
 .bet-box {
   display: flex;
   align-items: center;
@@ -222,44 +255,34 @@ body {
   height: 155px;
   border-radius: 38px;
   border: none;
-
   background: linear-gradient(145deg,#ffffff,#f3f3f3);
   color: black;
   font-size: 70px;
   font-weight: 1000;
   cursor: pointer;
   transition: .14s;
-
   box-shadow:
     0 30px 60px rgba(0,0,0,0.35),
     inset 0 0 45px rgba(255,255,255,0.7);
 }
-
-.bet-box button:active {
-  transform: scale(.9);
-}
+.bet-box button:active { transform: scale(.9); }
 
 .bet-box input {
   width: 430px;
   height: 155px;
   border-radius: 38px;
   border: 2px solid rgba(255,255,255,0.8);
-
   background: rgba(255,255,255,0.35);
   color: black;
   text-align: center;
-
   font-size: 64px;
   font-weight: 1000;
   outline: none;
-
   box-shadow:
     inset 0 0 45px rgba(0,0,0,0.25),
     inset 0 0 70px rgba(255,255,255,0.4);
 }
 
-
-/******QUICK BET BUTTONS******/
 .quick-bets {
   display: flex;
   gap: 22px;
@@ -271,53 +294,34 @@ body {
   padding: 26px 40px;
   border-radius: 28px;
   border: 2px solid rgba(255,255,255,0.8);
-
   cursor: pointer;
   font-size: 34px;
   font-weight: 900;
-
   transition: .12s;
   backdrop-filter: blur(20px);
-
   box-shadow:
     inset 0 0 35px rgba(255,255,255,0.45),
     0 18px 40px rgba(0,0,0,0.35);
 }
+.chip:hover { background: white; }
 
-.chip:hover {
-  background: white;
-}
-
-
-/**** PLACE BET BUTTON 8**/
 .bet-button {
   background: white;
   border: none;
   border-radius: 40px;
   padding: 34px 80px;
-
   color: black;
   font-size: 50px;
   font-weight: 1000;
   cursor: pointer;
-
   transition: .12s;
   white-space: nowrap;
-
   box-shadow:
     0 40px 95px rgba(0,0,0,0.55),
     inset 0 0 45px rgba(255,255,255,0.7);
 }
-
-.bet-button:disabled {
-  opacity: .35;
-  cursor: not-allowed;
-}
-
-.bet-button:active:not(:disabled) {
-  transform: scale(.94);
-}
-
+.bet-button:disabled { opacity: .35; cursor: not-allowed; }
+.bet-button:active:not(:disabled) { transform: scale(.94); }
 
 /****** RUN OVER ********/
 #runOver {
@@ -347,11 +351,5 @@ body {
   pointer-events: none;
 }
 
-.chain {
-  background-image: url("items/Chain.png");
-}
-
-.music {
-  background-image: url("items/note.png");
-}
-
+.chain { background-image: url("items/Chain.png"); }
+.music { background-image: url("items/note.png"); }

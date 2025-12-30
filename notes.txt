@@ -1,0 +1,7 @@
+character fix
+ground fix
+rolling physics fix
+dark clouds animation adding 
+jet coming and dropping fix
+adding elements to the ground like music stage, private golden jet and something more
+add acceleration to the character

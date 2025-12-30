@@ -1,5 +1,4 @@
 const gameScale = document.getElementById("game-scale");
-
 function scaleGame() {
   const scale = Math.min(window.innerWidth / 1900, window.innerHeight / 1151);
   gameScale.style.transform = `scale(${scale})`;
@@ -11,10 +10,8 @@ const world = document.getElementById("world");
 const player = document.getElementById("player");
 const ground = document.getElementById("ground");
 const scoreEl = document.getElementById("score");
-
 world.style.pointerEvents = "none";
 
-//bet config
 const betInput = document.getElementById("betAmount");
 const betBtn = document.getElementById("placeBet");
 const plusBtn = document.getElementById("plus");
@@ -24,47 +21,36 @@ const balanceEl = document.getElementById("balance");
 let balance = 1000;
 let betAmount = 10;
 
-// World config
 const SCREEN_W = 1919;
 const SCREEN_H = 1151;
-const WORLDH = 30000;
-const DEADZONE = 300;
 
+const WORLDH = 6000;
+const GROUND_Y = 4500;
+const DEADZONE = 250;
 const GROUND_HEIGHT = SCREEN_H / 2;
-ground.style.height = GROUND_HEIGHT + "px";
-ground.style.width = "10000px";
-ground.style.left = "-4000px";
-ground.style.top = (WORLDH - GROUND_HEIGHT) + "px";
 
+const PLAYER_W = 123.8;
+const PLAYER_H = 230.12;
 
-// Player config
-const PLAYER_SIZE = 140;
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
-
-player.style.width = PLAYER_SIZE + "px";
-player.style.height = PLAYER_SIZE + "px";
 
 let camX = 0, camY = 0;
 let velX = 0, velY = 0;
 let angle = 0, angVel = 0;
 
-// physics config
 let fallStarted = false;
 let betPlaced = false;
 let betResolved = false;
 
 const GRAVITY = 0.35;
 const MAX_FALL = 16;
-const RESTITUTION = 0.35;
 const AIR_FRICTION = 0.998;
 const GROUND_FRICTION = 0.9;
-const INERTIA = 30000;
 
 let earnings = 0;
 let lastCamY = 0;
 
-// bet UI handling
 function lockBetUI() {
   plusBtn.disabled = true;
   minusBtn.disabled = true;
@@ -168,7 +154,6 @@ function hardResetWorld(showLoss = true, delay = 2000) {
   }, delay);
 }
 
-// WORLD CLEARING
 function clearWorld() {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
   collectibles.length = chains.length = notes.length = 0;
@@ -180,7 +165,6 @@ function clearWorld() {
   darkClouds.length = 0;
 }
 
-// COLLECTIBLES
 const collectibles = [];
 const chains = [];
 const notes = [];
@@ -215,7 +199,7 @@ function spawnCollectible() {
   }
 
   const x = Math.random() * SCREEN_W;
-  const y = Math.min(camY + SCREEN_H + 600, WORLDH - GROUND_HEIGHT - DEADZONE - 50);
+  const y = Math.min(camY + SCREEN_H + 600, GROUND_Y - 500);
 
   el.style.left = x + "px";
   el.style.top = y + "px";
@@ -225,9 +209,7 @@ function spawnCollectible() {
 }
 setInterval(spawnCollectible, 800);
 
-// CLOUDS
 const clouds = [];
-
 const CLOUD1_W = 320, CLOUD1_H = 160;
 const CLOUD2_W = 325, CLOUD2_H = 217;
 
@@ -263,7 +245,7 @@ function randX() {
 
 function spawnY() {
   const TOP_DEAD = SCREEN_H * 0.7;
-  const BOTTOM_LIMIT = WORLDH - GROUND_HEIGHT - DEADZONE;
+  const BOTTOM_LIMIT = GROUND_Y - 500;
   return TOP_DEAD + Math.random() * (BOTTOM_LIMIT - TOP_DEAD);
 }
 
@@ -304,9 +286,7 @@ function spawnCloud(x, y) {
   clouds.push({ x, y, el, circles });
 }
 
-// DARK CLOUDS
 const darkClouds = [];
-
 const DARK_W = 280;
 const DARK_H = 187;
 
@@ -327,7 +307,7 @@ const sprite = document.getElementById("sprite");
 let skeletonFlashInterval = null;
 
 function spawnDarkCloud(x, y) {
-  if (y > WORLDH - GROUND_HEIGHT - DEADZONE) return;
+  if (y > GROUND_Y - 500) return;
   const el = document.createElement("div");
   el.className = "dark-cloud";
 
@@ -349,51 +329,171 @@ function spawnDarkCloud(x, y) {
 }
 
 function spawnWorld() {
-  for (let i = 0; i < 800; i++) spawnCloud(randX(), spawnY());
-  for (let i = 0; i < 255; i++) spawnDarkCloud(randX(), spawnY());
+  for (let i = 0; i < 400; i++) spawnCloud(randX(), spawnY());
+  for (let i = 0; i < 200; i++) spawnDarkCloud(randX(), spawnY());
 }
 spawnWorld();
 
-// COLLISION
-const PLAYER_COLLIDERS = [
-  { offsetX: 0, offsetY: -PLAYER_SIZE * 0.22, r: PLAYER_SIZE * 0.24 },
-  { offsetX: 0, offsetY: 0, r: PLAYER_SIZE * 0.28 },
-  { offsetX: 0, offsetY: PLAYER_SIZE * 0.22, r: PLAYER_SIZE * 0.24 }
-];
+
+const RAW_COL = {
+  head:{w:71.34,h:79.36,x:22.93,y:6.02},
+  torso:{w:69.11,h:82.89,x:26.73,y:84.63},
+  lh:{w:27.92,h:66.69,x:7.88,y:91.92},
+  rh:{w:15.81,h:66.69,x:87.08,y:86.93},
+  legs:{w:67.55,h:50.11,x:25.71,y:169.3}
+};
+
+const PLAYER_COLS = Object.values(RAW_COL).map(r=>({
+  nx:r.x/PLAYER_W,
+  ny:r.y/PLAYER_H,
+  nw:r.w/PLAYER_W,
+  nh:r.h/PLAYER_H
+}));
+
+function getPlayerColliders(){
+  const list=[]
+  for(const c of PLAYER_COLS){
+    const w=c.nw*PLAYER_W
+    const h=c.nh*PLAYER_H
+    const x=(camX+PLAYER_X)+(c.nx*PLAYER_W)+w/2
+    const y=(camY+PLAYER_Y)+(c.ny*PLAYER_H)+h/2
+    const r=Math.min(w,h)/2
+    list.push({x,y,r})
+  }
+  return list
+}
+
+
+let limbs = {
+  head:{nx:0.1050, ny:0},
+  torso:{nx:0.0722, ny:0.3273},
+  lh:{nx:0, ny:0.3434},
+  rh:{nx:0.6464, ny:0.3084},
+  legs:{nx:0.1050, ny:0.5826}
+};
+
+for(const k in limbs){
+  limbs[k].x = limbs[k].nx * PLAYER_W;
+  limbs[k].y = limbs[k].ny * PLAYER_H;
+  limbs[k].vx = 0;
+  limbs[k].vy = 0;
+  limbs[k].angle = 0;
+  limbs[k].angV = 0;
+}
+
+const partElems = {
+  head:document.querySelector(".head"),
+  torso:document.querySelector(".torso"),
+  lh:document.querySelector(".left-hand"),
+  rh:document.querySelector(".right-hand"),
+  legs:document.querySelector(".legs")
+};
+
+function limbShock(intensity = 1){
+  for(const k in limbs){
+    if(k === "lh" || k === "rh"){
+      limbs[k].vy += (Math.random() - 0.5) * 4 * intensity;
+    }
+  }
+}
+
+
+function updateLimbs(){
+  const g = 0.35;
+  const stiffness = 0.18;
+  const damping = 0.88;
+
+  for(const key in limbs){
+    const l = limbs[key];
+
+    const anchorX = (limbs[key].nx * PLAYER_W);
+    const anchorY = (limbs[key].ny * PLAYER_H);
+
+    // HEAD: only very subtle tilt + micro bob
+    if(key === "head"){
+      const headTilt = angVel * 0.35; 
+      const fallInfluence = velY * 0.12;
+
+      l.x = anchorX;
+      l.y = anchorY + fallInfluence;
+
+      l.angle = headTilt;
+      continue;
+    }
+
+    // TORSO + LEGS: locked in place
+    if(key === "torso" || key === "legs"){
+      l.x = anchorX;
+      l.y = anchorY;
+      l.angle = 0;
+      continue;
+    }
+
+    // ARMS: little reactive jiggle + gravity bounce
+    if(key === "lh" || key === "rh"){
+
+      l.vy += g * 0.4;
+
+      const dx = anchorX - l.x;
+      const dy = anchorY - l.y;
+
+      l.vx += dx * stiffness;
+      l.vy += dy * stiffness;
+
+      l.vx *= damping;
+      l.vy *= damping;
+
+      l.x += l.vx;
+      l.y += l.vy;
+
+      const swing = velY * 0.02 + angVel * 0.15;
+      l.angle += swing * 0.3;
+    }
+  }
+}
+
 
 function resolveCollisions() {
   let onGround = false;
 
+  const e = 0.40;
+  const muStatic = 0.55;
+  const muKinetic = 0.32;
+
+  const r = PLAYER_W * 0.45;
+  const I = 0.5 * r * r;
+
+  const PLAYER_COLLIDERS = getPlayerColliders();
+
   for (const cloud of clouds) {
     for (const c of cloud.circles) {
       for (const p of PLAYER_COLLIDERS) {
-        const px = camX + PLAYER_X + p.offsetX;
-        const py = camY + PLAYER_Y + p.offsetY;
-
-        const dx = px - c.x;
-        const dy = py - c.y;
-        const distSq = dx * dx + dy * dy;
+        const dx = p.x - c.x;
+        const dy = p.y - c.y;
+        const dist = Math.hypot(dx, dy);
         const minDist = p.r + c.r;
 
-        if (distSq < minDist * minDist) {
-          const dist = Math.sqrt(distSq) || 0.001;
-          const nx = dx / dist;
-          const ny = dy / dist;
+        if (dist < minDist) {
+          const nx = dx / dist || 0;
+          const ny = dy / dist || 0;
 
-          const penetration = (minDist - dist) * 0.5;
-          camX += nx * penetration;
-          camY += ny * penetration;
+          const penetration = minDist - dist;
+          camX += nx * penetration * 0.5;
+          camY += ny * penetration * 0.5;
 
-          const dot = velX * nx + velY * ny;
+          const vn = velX * nx + velY * ny;
+          const vt = velX * -ny + velY * nx;
 
-          if (dot < 0) {
-            const impulse = -(1 + RESTITUTION) * dot;
-            velX += impulse * nx;
-            velY += impulse * ny;
+          const vnAfter = -e * vn;
 
-            const torque = (p.offsetX * ny - p.offsetY * nx) * impulse;
-            angVel += torque / INERTIA;
-          }
+          velX = vnAfter * nx + vt * -ny;
+          velY = vnAfter * ny + vt * nx;
+
+          const torque = vt * r;
+          const alpha = torque / I;
+          angVel += alpha * 0.04;
+
+          limbShock(0.4);
         }
       }
     }
@@ -402,14 +502,11 @@ function resolveCollisions() {
   for (const cloud of darkClouds) {
     for (const rect of cloud.rects) {
       for (const p of PLAYER_COLLIDERS) {
-        const px = camX + PLAYER_X + p.offsetX;
-        const py = camY + PLAYER_Y + p.offsetY;
+        const nx = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
+        const ny = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
 
-        const nx = Math.max(rect.x, Math.min(px, rect.x + rect.w));
-        const ny = Math.max(rect.y, Math.min(py, rect.y + rect.h));
-
-        const dx = px - nx;
-        const dy = py - ny;
+        const dx = p.x - nx;
+        const dy = p.y - ny;
 
         if ((dx * dx + dy * dy) < p.r * p.r && !grabbedByDarkCloud) {
           grabbedByDarkCloud = true;
@@ -419,10 +516,7 @@ function resolveCollisions() {
           freezeX = camX;
           freezeY = camY;
 
-          velX = 0;
-          velY = 0;
-          angVel = 0;
-
+          velX = velY = angVel = 0;
           earnings *= 0.5;
 
           skeleton.style.display = "block";
@@ -436,65 +530,54 @@ function resolveCollisions() {
             sprite.style.display = showSkeleton ? "none" : "block";
           }, 90);
 
+          limbShock(1.3);
+
           return false;
         }
       }
     }
   }
 
-  const groundTop = WORLDH - GROUND_HEIGHT;
+  const PLAYER_COLLIDERS_LAST = PLAYER_COLLIDERS[PLAYER_COLLIDERS.length - 1];
+  const playerBottom = camY + PLAYER_Y + PLAYER_COLLIDERS_LAST.r;
 
-  if (camY + PLAYER_Y + PLAYER_COLLIDERS[2].r > groundTop) {
-    camY = groundTop - PLAYER_Y - PLAYER_COLLIDERS[2].r;
-    velY = 0;
-    onGround = true;
+  if (playerBottom >= GROUND_Y - DEADZONE) {
+    camY = (GROUND_Y - DEADZONE) - PLAYER_Y - PLAYER_COLLIDERS_LAST.r;
+
+    const speed = Math.hypot(velX, velY);
+
+    if (speed > 0.4) {
+      const tangentForce = Math.abs(velX);
+      const maxStatic = muStatic * 9.8;
+
+      if (tangentForce < maxStatic) {
+        const targetOmega = velX / r;
+        angVel += (targetOmega - angVel) * 0.28;
+        velX *= 0.97;
+      } else {
+        velX *= (1 - muKinetic * 0.12);
+        angVel += 0.01 * Math.sign(velX);
+      }
+
+      velY = -Math.abs(velY) * e * 0.35;
+      limbShock(0.2);
+
+    } else {
+      velX *= 0.88;
+      velY = 0;
+      angVel *= 0.75;
+      onGround = true;
+      limbShock(0.05);
+    }
   }
 
   return onGround;
 }
 
-// STUCK CHECK
 let stuckLastY = 0;
 let stuckStartTime = null;
 const STUCK_TIME_LIMIT = 3000;
 
-// STARFIELD
-
-function makeStars(count, size, opacityMin, opacityMax){
-  const field = document.getElementById("starfield");
-
-  const FIELD_W = window.innerWidth;
-  const FIELD_H = window.innerHeight;
-
-  for(let i = 0; i < count; i++){
-    const s = document.createElement("div");
-    s.className = "star";
-
-    const x = Math.random() * FIELD_W;
-    const y = Math.random() * FIELD_H;
-
-    s.style.left = x + "px";
-    s.style.top  = y + "px";
-
-    const scale = size + Math.random()*size;
-    s.style.width  = scale + "px";
-    s.style.height = scale + "px";
-
-    s.style.opacity =
-      (opacityMin + Math.random()*(opacityMax-opacityMin)).toFixed(2);
-
-    s.style.animationDuration = (2 + Math.random()*4) + "s";
-
-    field.appendChild(s);
-  } 
-}
-
-  makeStars(500, 1.2, .2, .6);
-  makeStars(200, 2.0, .4, .8);
-  makeStars(80,  3.5, .6, 1);
-
-
-// UPDATE LOOP
 function checkStuck() {
   if (!betPlaced || !fallStarted) {
     stuckStartTime = null;
@@ -511,6 +594,14 @@ function checkStuck() {
   } else stuckStartTime = null;
 }
 
+function updateGroundSection(){
+  ground.style.height = GROUND_HEIGHT + "px";
+  ground.style.width  = SCREEN_W * 3 + "px";
+  ground.style.left = (SCREEN_W * -1) + "px";
+  ground.style.top  = GROUND_Y + "px";
+}
+
+
 function update() {
 
   if (grabbedByDarkCloud) {
@@ -526,9 +617,11 @@ function update() {
       velX = Math.sin(spread) * power;
       velY = -Math.cos(spread) * power;
 
-      grabbedCloud.el.remove();
-      darkClouds.splice(darkClouds.indexOf(grabbedCloud), 1);
-      grabbedCloud = null;
+      if (grabbedCloud) {
+        grabbedCloud.el.remove();
+        darkClouds.splice(darkClouds.indexOf(grabbedCloud), 1);
+        grabbedCloud = null;
+      }
 
       if (skeletonFlashInterval) clearInterval(skeletonFlashInterval);
       skeletonFlashInterval = null;
@@ -600,28 +693,36 @@ function update() {
 
   lastCamY = camY;
 
+  updateLimbs();
   render();
   checkStuck();
 
   requestAnimationFrame(update);
 }
 
-// RENDER
+
 function render() {
   scoreEl.textContent = `₹${earnings.toFixed(2)}`;
 
-  player.style.transform =
-    `translate(-50%, -50%) rotate(${angle}rad)`;
-
-  world.style.transform =
-    `translate(${-camX}px, ${-camY}px)`;
+  world.style.transform = `translate(${-camX}px, ${-camY}px)`;
 
   silverjetWrap.style.left = (SCREEN_W / 2) + "px";
   silverjetWrap.style.top  = (SCREEN_H / 2) + "px";
 
-  silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
+  silverjetWrap.style.transform =
+    `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
 
+  updateGroundSection();
 
+  for(const key in limbs){
+    const l = limbs[key];
+    const el = partElems[key];
+
+    el.style.left = l.x + "px";
+    el.style.top  = l.y + "px";
+  }
+
+  player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
 }
 
 update();
