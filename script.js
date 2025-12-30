@@ -1,4 +1,4 @@
-const gameScale = document.getElementById("game-scale");
+const gameScale = document.getElementById("game-scale"); 
 function scaleGame() {
   const scale = Math.min(window.innerWidth / 1900, window.innerHeight / 1151);
   gameScale.style.transform = `scale(${scale})`;
@@ -8,7 +8,6 @@ scaleGame();
 
 const world = document.getElementById("world");
 const player = document.getElementById("player");
-const ground = document.getElementById("ground");
 const scoreEl = document.getElementById("score");
 world.style.pointerEvents = "none";
 
@@ -17,6 +16,7 @@ const betBtn = document.getElementById("placeBet");
 const plusBtn = document.getElementById("plus");
 const minusBtn = document.getElementById("minus");
 const balanceEl = document.getElementById("balance");
+const ground = document.getElementById("ground");
 
 let balance = 1000;
 let betAmount = 10;
@@ -24,13 +24,15 @@ let betAmount = 10;
 const SCREEN_W = 1919;
 const SCREEN_H = 1151;
 
-const WORLDH = 6000;
-const GROUND_Y = 4500;
-const DEADZONE = 250;
-const GROUND_HEIGHT = SCREEN_H / 2;
+const WORLDH = 20000;
+world.style.height = WORLDH + "px";
 
-const PLAYER_W = 123.8;
-const PLAYER_H = 230.12;
+const GROUND_HEIGHT = SCREEN_H / 2;
+const GROUND_Y = WORLDH - GROUND_HEIGHT;
+const DEADZONE = 250;
+
+const PLAYER_W = 140;
+const PLAYER_H = 210;
 
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
@@ -43,8 +45,8 @@ let fallStarted = false;
 let betPlaced = false;
 let betResolved = false;
 
-const GRAVITY = 0.35;
-const MAX_FALL = 16;
+const GRAVITY = 0.7;
+const MAX_FALL = 30;
 const AIR_FRICTION = 0.998;
 const GROUND_FRICTION = 0.9;
 
@@ -119,7 +121,6 @@ betBtn.onclick = () => {
   fallStarted = true;
   betPlaced = true;
   betResolved = false;
-
   lockBetUI();
 };
 
@@ -134,7 +135,6 @@ function hardResetWorld(showLoss = true, delay = 2000) {
 
   const payoutNum = earnings;
   balance += payoutNum;
-
   updateBalanceUI();
 
   if (showLoss) {
@@ -157,10 +157,8 @@ function hardResetWorld(showLoss = true, delay = 2000) {
 function clearWorld() {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
   collectibles.length = chains.length = notes.length = 0;
-
   for (const c of clouds) c.el.remove();
   clouds.length = 0;
-
   for (const c of darkClouds) c.el.remove();
   darkClouds.length = 0;
 }
@@ -176,16 +174,13 @@ silverjetWrap.style.zIndex = "9999999";
 
 const silverjet = document.createElement("div");
 silverjet.className = "silverjet";
-
 silverjetWrap.appendChild(silverjet);
 document.getElementById("game").appendChild(silverjetWrap);
 
 function spawnCollectible() {
   if (!betPlaced) return;
-
   const type = Math.random();
   const el = document.createElement("div");
-
   let value = 0, arr;
 
   if (type < 0.55) {
@@ -209,9 +204,11 @@ function spawnCollectible() {
 }
 setInterval(spawnCollectible, 800);
 
+
+// ========= CLOUDS =========
 const clouds = [];
-const CLOUD1_W = 320, CLOUD1_H = 160;
-const CLOUD2_W = 325, CLOUD2_H = 217;
+const CLOUD1_W = 320 * 1.3, CLOUD1_H = 160 * 1.3;
+const CLOUD2_W = 325 * 1.2, CLOUD2_H = 217 * 1.2;
 
 const CLOUD1 = [
   { x: 0.1329, y: 0.6750, r: 0.0922 },
@@ -286,6 +283,8 @@ function spawnCloud(x, y) {
   clouds.push({ x, y, el, circles });
 }
 
+
+// ========= DARK CLOUDS =========
 const darkClouds = [];
 const DARK_W = 280;
 const DARK_H = 187;
@@ -329,134 +328,100 @@ function spawnDarkCloud(x, y) {
 }
 
 function spawnWorld() {
-  for (let i = 0; i < 400; i++) spawnCloud(randX(), spawnY());
-  for (let i = 0; i < 200; i++) spawnDarkCloud(randX(), spawnY());
+  for (let i = 0; i < 800; i++) spawnCloud(randX(), spawnY()); 
+  for (let i = 0; i < 100; i++) spawnDarkCloud(randX(), spawnY());
 }
 spawnWorld();
 
 
-const RAW_COL = {
-  head:{w:71.34,h:79.36,x:22.93,y:6.02},
-  torso:{w:69.11,h:82.89,x:26.73,y:84.63},
-  lh:{w:27.92,h:66.69,x:7.88,y:91.92},
-  rh:{w:15.81,h:66.69,x:87.08,y:86.93},
-  legs:{w:67.55,h:50.11,x:25.71,y:169.3}
-};
+function updateGroundSection() {}
 
-const PLAYER_COLS = Object.values(RAW_COL).map(r=>({
-  nx:r.x/PLAYER_W,
-  ny:r.y/PLAYER_H,
-  nw:r.w/PLAYER_W,
-  nh:r.h/PLAYER_H
-}));
+
+// ===== COLLIDERS =====
+const ELLIPSES = [
+  { x: 0.2857, y: 0.0190, w: 0.4357, h: 0.4048 }
+];
+
+const RECTS = [
+  { x: 0.1571, y: 0.3905, w: 0.6857, h: 0.3476 },
+  { x: 0.2714, y: 0.7333, w: 0.4571, h: 0.2381 }
+];
 
 function getPlayerColliders(){
-  const list=[]
-  for(const c of PLAYER_COLS){
-    const w=c.nw*PLAYER_W
-    const h=c.nh*PLAYER_H
-    const x=(camX+PLAYER_X)+(c.nx*PLAYER_W)+w/2
-    const y=(camY+PLAYER_Y)+(c.ny*PLAYER_H)+h/2
-    const r=Math.min(w,h)/2
-    list.push({x,y,r})
+  const list = [];
+
+  const centerX = camX + PLAYER_X;
+  const centerY = camY + PLAYER_Y;
+
+  function rotatePoint(x, y){
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    return {
+      x: centerX + dx * cos - dy * sin,
+      y: centerY + dx * sin + dy * cos
+    };
   }
-  return list
-}
 
+  for(const e of ELLIPSES){
+    const w = e.w * PLAYER_W;
+    const h = e.h * PLAYER_H;
+    const r = Math.min(w,h)/2;
 
-let limbs = {
-  head:{nx:0.1050, ny:0},
-  torso:{nx:0.0722, ny:0.3273},
-  lh:{nx:0, ny:0.3434},
-  rh:{nx:0.6464, ny:0.3084},
-  legs:{nx:0.1050, ny:0.5826}
-};
+    const ex = ((e.x + e.w/2) - 0.5) * PLAYER_W;
+    const ey = ((e.y + e.h/2) - 0.5) * PLAYER_H;
 
-for(const k in limbs){
-  limbs[k].x = limbs[k].nx * PLAYER_W;
-  limbs[k].y = limbs[k].ny * PLAYER_H;
-  limbs[k].vx = 0;
-  limbs[k].vy = 0;
-  limbs[k].angle = 0;
-  limbs[k].angV = 0;
-}
-
-const partElems = {
-  head:document.querySelector(".head"),
-  torso:document.querySelector(".torso"),
-  lh:document.querySelector(".left-hand"),
-  rh:document.querySelector(".right-hand"),
-  legs:document.querySelector(".legs")
-};
-
-function limbShock(intensity = 1){
-  for(const k in limbs){
-    if(k === "lh" || k === "rh"){
-      limbs[k].vy += (Math.random() - 0.5) * 4 * intensity;
-    }
+    const rot = rotatePoint(centerX + ex, centerY + ey);
+    list.push({ x: rot.x, y: rot.y, r });
   }
-}
 
+  for(const rct of RECTS){
+    const w = rct.w * PLAYER_W;
+    const h = rct.h * PLAYER_H;
+    const r = Math.min(w,h)/2;
 
-function updateLimbs(){
-  const g = 0.35;
-  const stiffness = 0.18;
-  const damping = 0.88;
+    const rx = ((rct.x + rct.w/2) - 0.5) * PLAYER_W;
+    const ry = ((rct.y + rct.h/2) - 0.5) * PLAYER_H;
 
-  for(const key in limbs){
-    const l = limbs[key];
-
-    const anchorX = (limbs[key].nx * PLAYER_W);
-    const anchorY = (limbs[key].ny * PLAYER_H);
-
-    // HEAD: only very subtle tilt + micro bob
-    if(key === "head"){
-      const headTilt = angVel * 0.35; 
-      const fallInfluence = velY * 0.12;
-
-      l.x = anchorX;
-      l.y = anchorY + fallInfluence;
-
-      l.angle = headTilt;
-      continue;
-    }
-
-    // TORSO + LEGS: locked in place
-    if(key === "torso" || key === "legs"){
-      l.x = anchorX;
-      l.y = anchorY;
-      l.angle = 0;
-      continue;
-    }
-
-    // ARMS: little reactive jiggle + gravity bounce
-    if(key === "lh" || key === "rh"){
-
-      l.vy += g * 0.4;
-
-      const dx = anchorX - l.x;
-      const dy = anchorY - l.y;
-
-      l.vx += dx * stiffness;
-      l.vy += dy * stiffness;
-
-      l.vx *= damping;
-      l.vy *= damping;
-
-      l.x += l.vx;
-      l.y += l.vy;
-
-      const swing = velY * 0.02 + angVel * 0.15;
-      l.angle += swing * 0.3;
-    }
+    const rot = rotatePoint(centerX + rx, centerY + ry);
+    list.push({ x: rot.x, y: rot.y, r });
   }
+
+  return list;
 }
 
 
+// ========= DEBUG COLLIDER VIS =========
+const debugCanvas = document.getElementById("debugColliders");
+const dctx = debugCanvas.getContext("2d");
+debugCanvas.width = SCREEN_W;
+debugCanvas.height = SCREEN_H;
+
+function drawDebugColliders(){
+  dctx.clearRect(0,0,debugCanvas.width,debugCanvas.height);
+  const cols = getPlayerColliders();
+  cols.forEach(c=>{
+    dctx.beginPath();
+    dctx.arc(c.x-camX,c.y-camY,c.r,0,Math.PI*2);
+    dctx.strokeStyle="rgba(255,200,0,0.9)";
+    dctx.lineWidth=3;
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.arc(c.x-camX,c.y-camY,2,0,Math.PI*2);
+    dctx.fillStyle="red";
+    dctx.fill();
+  });
+}
+
+
+// ========= REAL COLLISION PHYSICS =========
 function resolveCollisions() {
   let onGround = false;
 
-  const e = 0.40;
+  const e = 0.75;
   const muStatic = 0.55;
   const muKinetic = 0.32;
 
@@ -464,37 +429,84 @@ function resolveCollisions() {
   const I = 0.5 * r * r;
 
   const PLAYER_COLLIDERS = getPlayerColliders();
+  const bodyCX = camX + PLAYER_X;
+  const bodyCY = camY + PLAYER_Y;
 
   for (const cloud of clouds) {
     for (const c of cloud.circles) {
+      const cx = c.x;
+      const cy = c.y;
+      const cr = c.r;
+
       for (const p of PLAYER_COLLIDERS) {
-        const dx = p.x - c.x;
-        const dy = p.y - c.y;
-        const dist = Math.hypot(dx, dy);
-        const minDist = p.r + c.r;
+        const dx = p.x - cx;
+        const dy = p.y - cy;
 
-        if (dist < minDist) {
-          const nx = dx / dist || 0;
-          const ny = dy / dist || 0;
+        const distSq = dx * dx + dy * dy;
+        const minDist = p.r + cr;
+        const minDistSq = minDist * minDist;
+        if (distSq >= minDistSq) continue;
 
-          const penetration = minDist - dist;
-          camX += nx * penetration * 0.5;
-          camY += ny * penetration * 0.5;
+        const dist = Math.sqrt(distSq) || 0.0001;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const penetration = minDist - dist;
+        const deep = penetration > cr * 0.55;
 
-          const vn = velX * nx + velY * ny;
-          const vt = velX * -ny + velY * nx;
+        const rx = p.x - bodyCX;
+        const ry = p.y - bodyCY;
 
-          const vnAfter = -e * vn;
+        const relVX = velX - (-angVel * ry);
+        const relVY = velY + ( angVel * rx);
+        const relNormal = relVX * nx + relVY * ny;
 
-          velX = vnAfter * nx + vt * -ny;
-          velY = vnAfter * ny + vt * nx;
+        if (relNormal < 0 && !deep) {
+          const rCrossN = rx * ny - ry * nx;
+          const Ireal = I || 0.5 * (rx * rx + ry * ry);
 
-          const torque = vt * r;
-          const alpha = torque / I;
-          angVel += alpha * 0.04;
+          let j = -(1 + e) * relNormal;
+          j /= (1 + (rCrossN * rCrossN) / Ireal);
+          j = Math.max(-25, Math.min(25, j));
 
-          limbShock(0.4);
+          velX += j * nx;
+          velY += j * ny;
+          angVel += (rCrossN * j) / Ireal;
+
+          const vtX = relVX - relNormal * nx;
+          const vtY = relVY - relNormal * ny;
+          const vt = Math.hypot(vtX, vtY);
+
+          if (vt > 1e-4) {
+            const tx = vtX / vt;
+            const ty = vtY / vt;
+
+            let jt = -vt / (1 + (rCrossN * rCrossN) / Ireal);
+            const maxFriction = muKinetic * Math.abs(j);
+            jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
+
+            velX += jt * tx;
+            velY += jt * ty;
+            angVel += (rCrossN * jt) / Ireal;
+          }
         }
+
+        if (deep) {
+          velX *= 0.4;
+          velY *= 0.4;
+          if (Math.abs(angVel) < 0.05) angVel = 0;
+          else angVel *= 0.35;
+        }
+
+        const MAX_SPIN = 0.12;
+        if (Math.abs(angVel) > MAX_SPIN)
+          angVel = MAX_SPIN * Math.sign(angVel);
+
+        const k_slop = 0.001;
+        const percent = 0.25;
+        const corr = Math.max(penetration - k_slop, 0) * percent;
+
+        camX += nx * corr;
+        camY += ny * corr;
       }
     }
   }
@@ -502,6 +514,7 @@ function resolveCollisions() {
   for (const cloud of darkClouds) {
     for (const rect of cloud.rects) {
       for (const p of PLAYER_COLLIDERS) {
+
         const nx = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
         const ny = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
 
@@ -516,21 +529,20 @@ function resolveCollisions() {
           freezeX = camX;
           freezeY = camY;
 
-          velX = velY = angVel = 0;
+          velX = velY = 0;
+          angVel = 0;
+
           earnings *= 0.5;
 
           skeleton.style.display = "block";
           sprite.style.display = "block";
 
           let showSkeleton = false;
-
           skeletonFlashInterval = setInterval(() => {
             showSkeleton = !showSkeleton;
             skeleton.style.display = showSkeleton ? "block" : "none";
             sprite.style.display = showSkeleton ? "none" : "block";
           }, 90);
-
-          limbShock(1.3);
 
           return false;
         }
@@ -538,11 +550,11 @@ function resolveCollisions() {
     }
   }
 
-  const PLAYER_COLLIDERS_LAST = PLAYER_COLLIDERS[PLAYER_COLLIDERS.length - 1];
-  const playerBottom = camY + PLAYER_Y + PLAYER_COLLIDERS_LAST.r;
+  const last = PLAYER_COLLIDERS[PLAYER_COLLIDERS.length - 1];
+  const playerBottom = camY + PLAYER_Y + last.r;
 
   if (playerBottom >= GROUND_Y - DEADZONE) {
-    camY = (GROUND_Y - DEADZONE) - PLAYER_Y - PLAYER_COLLIDERS_LAST.r;
+    camY = (GROUND_Y - DEADZONE) - PLAYER_Y - last.r;
 
     const speed = Math.hypot(velX, velY);
 
@@ -560,20 +572,20 @@ function resolveCollisions() {
       }
 
       velY = -Math.abs(velY) * e * 0.35;
-      limbShock(0.2);
 
     } else {
       velX *= 0.88;
       velY = 0;
       angVel *= 0.75;
       onGround = true;
-      limbShock(0.05);
     }
   }
 
   return onGround;
 }
 
+
+// ========= STUCK CHECK =========
 let stuckLastY = 0;
 let stuckStartTime = null;
 const STUCK_TIME_LIMIT = 3000;
@@ -594,14 +606,8 @@ function checkStuck() {
   } else stuckStartTime = null;
 }
 
-function updateGroundSection(){
-  ground.style.height = GROUND_HEIGHT + "px";
-  ground.style.width  = SCREEN_W * 3 + "px";
-  ground.style.left = (SCREEN_W * -1) + "px";
-  ground.style.top  = GROUND_Y + "px";
-}
 
-
+// ========= GAME LOOP =========
 function update() {
 
   if (grabbedByDarkCloud) {
@@ -609,13 +615,8 @@ function update() {
     camY = freezeY;
 
     if (performance.now() >= releaseTime) {
+
       grabbedByDarkCloud = false;
-
-      const spread = (Math.random() * Math.PI / 1.7) - (Math.PI / 3.4);
-      const power = 20;
-
-      velX = Math.sin(spread) * power;
-      velY = -Math.cos(spread) * power;
 
       if (grabbedCloud) {
         grabbedCloud.el.remove();
@@ -628,6 +629,14 @@ function update() {
 
       skeleton.style.display = "none";
       sprite.style.display = "block";
+
+      const angleSpread = (Math.random() * Math.PI / 2.2) - (Math.PI / 4.4);
+      const power = 28;
+
+      velX = Math.sin(angleSpread) * power;
+      velY = -Math.cos(angleSpread) * power;
+
+      angVel = (Math.random() - 0.5) * 0.08;
     }
 
     render();
@@ -644,7 +653,7 @@ function update() {
   camY += velY;
 
   velX *= onGround ? GROUND_FRICTION : AIR_FRICTION;
-  angVel *= onGround ? 0.7 : 0.99;
+  angVel *= onGround ? 0.7 : 0.995; 
 
   angle += angVel;
 
@@ -693,36 +702,21 @@ function update() {
 
   lastCamY = camY;
 
-  updateLimbs();
   render();
   checkStuck();
 
   requestAnimationFrame(update);
 }
 
-
 function render() {
   scoreEl.textContent = `₹${earnings.toFixed(2)}`;
-
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
-
   silverjetWrap.style.left = (SCREEN_W / 2) + "px";
   silverjetWrap.style.top  = (SCREEN_H / 2) + "px";
-
-  silverjetWrap.style.transform =
-    `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
-
-  updateGroundSection();
-
-  for(const key in limbs){
-    const l = limbs[key];
-    const el = partElems[key];
-
-    el.style.left = l.x + "px";
-    el.style.top  = l.y + "px";
-  }
-
+  silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+  updateGroundSection();
+  drawDebugColliders();
 }
 
 update();
