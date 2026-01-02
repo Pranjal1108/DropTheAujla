@@ -40,6 +40,8 @@ ground.style.top = GROUND_Y - 600 + "px";
 
 const cloudquantity = 500;
 const darkcloudquantity = 50;
+const PRESET_SPAWN_COUNT = 2000; // 2000 Collectibles
+
 
 const PLAYER_W = 140;
 const PLAYER_H = 210;
@@ -156,6 +158,7 @@ function hardResetWorld(showLoss = true, delay = 2000) {
     lastCamY = 0;
     runOverEl.style.display = "none";
     spawnWorld();
+    spawnCollectibles(PRESET_SPAWN_COUNT);
     unlockBetUI();
     updateBalanceUI();
   }, delay);
@@ -185,35 +188,47 @@ silverjetWrap.appendChild(silverjet);
 document.getElementById("game").appendChild(silverjetWrap);
 
 // ========= COLLECTIBLES =========
+// Spawns 2000 collectibles spread across world height, avoiding deadzones and ground zone.
 
-function spawnCollectible() {
-  if (!betPlaced) return;
+function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
+  [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
+  collectibles.length = chains.length = notes.length = 0;
 
-  const type = Math.random();
-  const el = document.createElement("div");
-  let value = 0, arr;
+  const TOP_SAFE = DEADZONE;                 // avoid upper deadzone
+  const BOTTOM_SAFE_START = GROUND_Y - DEADZONE; // avoid bottom deadzone area above ground
 
-  if (type < 0.55) {
-    el.className = "collectible chain";
-    value = 3;
-    arr = chains;
-  } else {
-    el.className = "collectible music";
-    value = 5;
-    arr = notes;
+  for (let i = 0; i < count; i++) {
+    const type = Math.random();
+    const el = document.createElement("div");
+    let value = 0, arr;
+
+    if (type < 0.55) {
+      el.className = "collectible chain";
+      value = 3;
+      arr = chains;
+    } else {
+      el.className = "collectible music";
+      value = 5;
+      arr = notes;
+    }
+
+    const x = (Math.random() * SCREEN_W * 10) - (SCREEN_W * 5);
+
+    let y;
+    // keep rerolling until not in deadzone
+    do {
+      y = Math.random() * WORLDH;
+    } while (y < TOP_SAFE || (y > BOTTOM_SAFE_START && y < GROUND_Y));
+
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    world.appendChild(el);
+    const obj = { x, y, value, el };
+    arr.push(obj);
+    collectibles.push(obj);
   }
-
-  const x = Math.random() * SCREEN_W;
-  const spawnBuffer = SCREEN_H * 1.5;
-  const y = camY + SCREEN_H + spawnBuffer;
-
-  el.style.left = x + "px";
-  el.style.top = y + "px";
-
-  world.appendChild(el);
-  arr.push({ x, y, value, el });
 }
-setInterval(spawnCollectible, 800);
 
 // ========= STARFIELD =========
 
@@ -416,6 +431,7 @@ function spawnWorld() {
   for (let i = 0; i < darkcloudquantity; i++) spawnDarkCloud(randX(), spawnY());
 }
 spawnWorld();
+spawnCollectibles(PRESET_SPAWN_COUNT);
 
 // ========= PLAYER COLLIDERS =========
 
@@ -857,7 +873,7 @@ function render() {
   silverjetWrap.style.top = (SCREEN_H / 2) + "px";
   silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-  // drawDebugColliders(); // disable for perf if needed
+  // drawDebugColliders();
 }
 
 update();
