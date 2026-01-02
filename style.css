@@ -47,15 +47,9 @@ body {
   background: url("clouds/darkcloud.png") no-repeat center/contain;
   pointer-events: none;
   z-index: 100;
-  filter: brightness(2.2) contrast(1.4);
-  animation: dangerPulse 1.4s infinite ease-in-out;
 }
 
-@keyframes dangerPulse {
-  0%   { filter: brightness(2.5) contrast(1.5); }
-  50%  { filter: brightness(2.8) contrast(1.8); }
-  100% { filter: brightness(2.5) contrast(1.5); }
-}
+
 
 /******** PLAYER ********/
 #player{
@@ -115,7 +109,47 @@ body {
 }
 
 
+#sky{
+  width:100vw;
+  height:100vh;
+  position:relative;
+  overflow:hidden;
+}
 
+/* Each cloud layer */
+.cloud-layer{
+  position:absolute;
+  top:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+/* Back Layer (smallest & slowest) */
+.back div{
+  position:absolute;
+  width:120px;
+  height:70px;
+  background:url("items/movcloud1.png") no-repeat center/contain;
+  opacity:0.6;
+}
+
+/* Mid Layer */
+.mid div{
+  position:absolute;
+  width:180px;
+  height:100px;
+  background:url("item/movcloud2.png") no-repeat center/contain;
+  opacity:0.8;
+}
+
+/* Front Layer (big boi) */
+.front div{
+  position:absolute;
+  width:250px;
+  height:140px;
+  background:url("items/movcloud3.png") no-repeat center/contain;
+}
 
 
 
@@ -130,19 +164,21 @@ body {
   transform: translate(-50%, -50%) scale(4);
 }
 
-/******** REAL NEW GROUND ********/
 #ground {
   position: absolute;
   width: 200000px;
-  height: 50vh;
   left: 50%;
   transform: translateX(-50%);
-  top: calc(100% - 50vh);   /* THIS is the magic */
+  
   background: url("items/ground.png") repeat-x;
-  background-size: contain;
+  background-repeat: repeat-x;
+  background-size: auto 100%;  
+
   pointer-events: none;
   z-index: 999;
 }
+
+
 
 /******** STARFIELD ********/
 #starfield {
@@ -155,13 +191,14 @@ body {
 .star {
   position: absolute;
   border-radius: 50%;
-  background: white;
+  background: rgb(255, 210, 29);
   width: 2px;
   height: 2px;
   box-shadow: 0 0 6px 2px rgba(255,255,255,.4);
   animation-name: twinkle;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
+  animation-duration: 2s;
 }
 
 @keyframes twinkle {
@@ -309,8 +346,8 @@ body {
 /***** COLLECTIBLES ******/
 .collectible {
   position: absolute;
-  width: 80px;
-  height: 80px;
+  width: 115px;
+  height: 115px;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
