@@ -39,6 +39,7 @@ body {
 .cloud {
   position: absolute;
   filter: drop-shadow(0px 10px 25px rgba(0,0,0,0.18)) brightness(.9) contrast(1.1);
+  opacity: 90%;
 }
 
 /******** DARK CLOUD ********/
@@ -56,13 +57,73 @@ body {
   position:absolute;
   left:50%;
   top:50%;
+  z-index: 99999;
   transform:translate(-50%,-50%);
-  z-index:10;
+  width:132.51px;
+  height:191px;
   pointer-events:none;
-  width:140px;
-  height:210px;
-  background:url("items/aujla.png") no-repeat center/contain;
 }
+
+/* torso – THE CHAD, DOESN'T MOVE */
+.torso{
+  position:absolute;
+  width:100%;
+  height:60%;
+  top:25%;
+  background:url("items/torso.png") no-repeat center/contain;
+  transform-origin:50% 50%;
+}
+
+
+.head{
+  position:absolute;
+  width:55%;
+  height:35%;
+  left:23%;
+  top:-30%;
+  background:url("items/Head.png") no-repeat center/contain;
+  transform-origin:50% 80%; 
+}
+
+.arm{
+  position:absolute;
+  width:35%;
+  height:35%;
+  top:10%;
+}
+
+.left-arm{
+  left:-5%;
+  background:url("items/left_arm.png") no-repeat center/contain;
+  transform-origin:20% 20%;
+}
+
+.right-arm{
+  right:-5%;
+  background:url("items/right_arm.png") no-repeat center/contain;
+  transform-origin:80% 20%;
+}
+
+/* LEGS – pivot from hip */
+.leg{
+  position:absolute;
+  width:30%;
+  height:40%;
+  bottom:-5%;
+}
+
+.left-leg{
+  left:18%;
+  background:url("items/left_leg.png") no-repeat center/contain;
+  transform-origin:50% 5%;
+}
+
+.right-leg{
+  right:18%;
+  background:url("items/right_leg.png") no-repeat center/contain;
+  transform-origin:50% 5%;
+}
+
 
 
 
@@ -76,11 +137,26 @@ body {
 
 #debugColliders{
   position:absolute;
-  left:0;
-  top:0;
-  width:100%;
-  height:100%;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:132.51px;
+  height:191px;
   pointer-events:none;
+  z-index: 9999;
+}
+
+.debug-rect{
+  position:absolute;
+  border:2px solid rgba(0,255,0,.6);
+  box-sizing:border-box;
+}
+
+.debug-circle{
+  position:absolute;
+  border:2px solid rgba(255,0,0,.7);
+  border-radius:50%;
+  box-sizing:border-box;
 }
 
 
@@ -100,10 +176,10 @@ body {
   -webkit-text-stroke: 0;
 
   text-shadow:
-    0 0 8px rgba(255,255,255,.15),
-    0 0 18px rgba(255,215,115,.18),   /* light golden halo */
-    0 0 35px rgba(255,215,115,.15),   /* extended soft glow */
-    0 6px 24px rgba(0,0,0,.55);       /* grounding shadow */
+    0 0 8px rgba(255, 152, 152, 0.15),
+    0 0 18px rgba(246, 206, 106, 0.18),   /* light golden halo */
+    0 0 35px rgba(156, 132, 72, 0.15),   /* extended soft glow */
+    0 6px 24px rgba(53, 34, 34, 0.55);       /* grounding shadow */
 
   pointer-events: none;
 }
@@ -139,7 +215,7 @@ body {
   position:absolute;
   width:180px;
   height:100px;
-  background:url("item/movcloud2.png") no-repeat center/contain;
+  background:url("items/movcloud2.png") no-repeat center/contain;
   opacity:0.8;
 }
 
@@ -191,7 +267,7 @@ body {
 .star {
   position: absolute;
   border-radius: 50%;
-  background: rgb(255, 210, 29);
+  background: rgb(255, 255, 255);
   width: 2px;
   height: 2px;
   box-shadow: 0 0 6px 2px rgba(255,255,255,.4);

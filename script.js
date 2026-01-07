@@ -33,14 +33,14 @@ world.style.height = WORLDH + "px";
 
 const GROUND_HEIGHT = 700;
 const GROUND_Y = WORLDH - GROUND_HEIGHT;
-const DEADZONE = 500;
+const DEADZONE = 1500;
 
 ground.style.height = GROUND_HEIGHT + 900 + "px";
 ground.style.top = GROUND_Y - 600 + "px";
 
 const cloudquantity = 500;
-const darkcloudquantity = 50;
-const PRESET_SPAWN_COUNT = 2000; // 2000 Collectibles
+const darkcloudquantity = 40;
+const PRESET_SPAWN_COUNT = 600;
 
 
 const PLAYER_W = 140;
@@ -133,6 +133,7 @@ betBtn.onclick = () => {
   lockBetUI();
 };
 
+
 updateBalanceUI();
 
 const runOverEl = document.getElementById("runOver");
@@ -194,8 +195,8 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
   collectibles.length = chains.length = notes.length = 0;
 
-  const TOP_SAFE = DEADZONE;                 // avoid upper deadzone
-  const BOTTOM_SAFE_START = GROUND_Y - DEADZONE; // avoid bottom deadzone area above ground
+  const TOP_SAFE = DEADZONE;                 
+  const BOTTOM_SAFE_START = GROUND_Y - DEADZONE; 
 
   for (let i = 0; i < count; i++) {
     const type = Math.random();
@@ -215,7 +216,6 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
     const x = (Math.random() * SCREEN_W * 10) - (SCREEN_W * 5);
 
     let y;
-    // keep rerolling until not in deadzone
     do {
       y = Math.random() * WORLDH;
     } while (y < TOP_SAFE || (y > BOTTOM_SAFE_START && y < GROUND_Y));
@@ -304,7 +304,7 @@ requestAnimationFrame(animateAnimatedClouds);
 // ========= CLOUDS =========
 
 const clouds = [];
-const CLOUD1_W = 320 * 1.5, CLOUD1_H = 160 * 1.5;
+const CLOUD1_W = 320 * 1.7, CLOUD1_H = 160 * 1.7;
 const CLOUD2_W = 325 * 1.5, CLOUD2_H = 217 * 1.5;
 
 const CLOUD1 = [
@@ -339,40 +339,53 @@ function randX() {
 
 function spawnY() {
   const MAX_CLOUD_H = Math.max(CLOUD1_H, CLOUD2_H);
-  const SAFE_ZONE = 500;
-  let min = camY + SCREEN_H + DEADZONE;
-  let max = GROUND_Y - SAFE_ZONE - MAX_CLOUD_H;
-  if (min > max) min = max - 500;
-  return min + Math.random() * (max - min);
+  const TOP_SAFE = DEADZONE;
+  const BOTTOM_SAFE = GROUND_Y - DEADZONE - MAX_CLOUD_H;
+  return TOP_SAFE + Math.random() * (BOTTOM_SAFE - TOP_SAFE);
 }
+
 
 function spawnCloud(x, y) {
   const pick = Math.random() < 0.5 ? 1 : 2;
   let el = document.createElement("div");
   el.className = "cloud";
 
+  // Normal cloud scale range
+  const MIN_SCALE = 0.7;
+  const MAX_SCALE = 1.25;
+  const scale = MIN_SCALE + Math.random() * (MAX_SCALE - MIN_SCALE);
+
   let circles;
+  let W, H, base;
 
   if (pick === 1) {
-    el.style.width = CLOUD1_W + "px";
-    el.style.height = CLOUD1_H + "px";
+    W = CLOUD1_W * scale;
+    H = CLOUD1_H * scale;
+    base = CLOUD1;
+
+    el.style.width = W + "px";
+    el.style.height = H + "px";
     el.style.background = `url('clouds/cloud4.png') no-repeat center/contain`;
 
-    circles = CLOUD1.map(c => ({
-      x: x + c.x * CLOUD1_W,
-      y: y + c.y * CLOUD1_H,
-      r: c.r * CLOUD1_W
+    circles = base.map(c => ({
+      x: x + c.x * W,
+      y: y + c.y * H,
+      r: c.r * W
     }));
 
   } else {
-    el.style.width = CLOUD2_W + "px";
-    el.style.height = CLOUD2_H + "px";
+    W = CLOUD2_W * scale;
+    H = CLOUD2_H * scale;
+    base = CLOUD2;
+
+    el.style.width = W + "px";
+    el.style.height = H + "px";
     el.style.background = `url('clouds/cloud2.png') no-repeat center/contain`;
 
-    circles = CLOUD2.map(c => ({
-      x: x + c.x * CLOUD2_W,
-      y: y + c.y * CLOUD2_H,
-      r: c.r * CLOUD2_W
+    circles = base.map(c => ({
+      x: x + c.x * W,
+      y: y + c.y * H,
+      r: c.r * W
     }));
   }
 
@@ -382,6 +395,7 @@ function spawnCloud(x, y) {
   world.appendChild(el);
   clouds.push({ x, y, el, circles });
 }
+
 
 // ========= DARK CLOUDS =========
 
@@ -524,47 +538,72 @@ function restitutionFromSpeed(v) {
 }
 
 function recycleClouds() {
+  const MAX_CLOUD_H = Math.max(CLOUD1_H, CLOUD2_H);
+
+  const TOP_LIMIT = DEADZONE;
+  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_CLOUD_H;
+
   for (let c of clouds) {
-    if (c.y < camY - REUSE_DISTANCE) {
+
+    if (c.y < TOP_LIMIT - REUSE_DISTANCE) {
+      c.y = BOTTOM_LIMIT - Math.random() * 1200;
       c.x = randX();
-      c.y = camY + SCREEN_H + CLOUD_RESPAWN_AHEAD;
-
-      c.el.style.left = c.x + "px";
-      c.el.style.top = c.y + "px";
-
-      const pick1 = c.el.style.background.includes("cloud4");
-      const base = pick1 ? CLOUD1 : CLOUD2;
-      const W = pick1 ? CLOUD1_W : CLOUD2_W;
-      const H = pick1 ? CLOUD1_H : CLOUD2_H;
-
-      c.circles = base.map(p => ({
-        x: c.x + p.x * W,
-        y: c.y + p.y * H,
-        r: p.r * W
-      }));
     }
+
+    else if (c.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
+      c.y = TOP_LIMIT + Math.random() * 1200;
+      c.x = randX();
+    }
+
+    c.el.style.left = c.x + "px";
+    c.el.style.top = c.y + "px";
+
+    const pick1 = c.el.style.background.includes("cloud4");
+    const base = pick1 ? CLOUD1 : CLOUD2;
+    const W = pick1 ? CLOUD1_W : CLOUD2_W;
+    const H = pick1 ? CLOUD1_H : CLOUD2_H;
+
+    c.circles = base.map(p => ({
+      x: c.x + p.x * W,
+      y: c.y + p.y * H,
+      r: p.r * W
+    }));
   }
 }
+
+
 
 function recycleDarkClouds() {
+  const MAX_CLOUD_H = DARK_H;
+
+  const TOP_LIMIT = DEADZONE;
+  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_CLOUD_H;
+
   for (let c of darkClouds) {
-    if (c.y < camY - REUSE_DISTANCE) {
 
+    if (c.y < TOP_LIMIT - REUSE_DISTANCE) {
+      c.y = BOTTOM_LIMIT - Math.random() * 1200;
       c.x = randX();
-      c.y = camY + SCREEN_H + CLOUD_RESPAWN_AHEAD;
-
-      c.el.style.left = c.x + "px";
-      c.el.style.top = c.y + "px";
-
-      c.rects = DARK_RECTS.map(r => ({
-        x: c.x + r.x * DARK_W,
-        y: c.y + r.y * DARK_H,
-        w: r.w * DARK_W,
-        h: r.h * DARK_H
-      }));
     }
+
+    else if (c.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
+      c.y = TOP_LIMIT + Math.random() * 1200;
+      c.x = randX();
+    }
+
+    c.el.style.left = c.x + "px";
+    c.el.style.top = c.y + "px";
+
+    c.rects = DARK_RECTS.map(r => ({
+      x: c.x + r.x * DARK_W,
+      y: c.y + r.y * DARK_H,
+      w: r.w * DARK_W,
+      h: r.h * DARK_H
+    }));
   }
 }
+
+
 
 function resolveCollisions() {
   let onGround = false;
@@ -761,9 +800,15 @@ let stuckLastY = 0;
 let stuckStartTime = null;
 const STUCK_TIME_LIMIT = 3000;
 
+let hardStuckStart = null;
+let lastEarnings = 0;
+const HARD_STUCK_TIME = 6000; //6sec
+const HARD_MOVEMENT_THRESHOLD = 25; 
+
 function checkStuck() {
   if (!betPlaced || !fallStarted) {
     stuckStartTime = null;
+    hardStuckStart = null;
     return;
   }
 
@@ -771,11 +816,43 @@ function checkStuck() {
   stuckLastY = camY;
 
   if (movement < 5) {
-    if (stuckStartTime === null) stuckStartTime = performance.now();
+    if (stuckStartTime === null)
+      stuckStartTime = performance.now();
     else if (performance.now() - stuckStartTime >= STUCK_TIME_LIMIT)
       hardResetWorld(true, 2000);
-  } else stuckStartTime = null;
+  } else {
+    stuckStartTime = null;
+  }
+
+  const now = performance.now();
+
+  if (hardStuckStart === null) {
+    hardStuckStart = now;
+    lastEarnings = earnings;
+    return;
+  }
+
+  const elapsed = now - hardStuckStart;
+  const totalMovement = Math.abs(camY - freezeY); 
+
+  const barelyMoving =
+    Math.abs(velY) < 0.6 &&
+    Math.abs(velX) < 0.6 &&
+    totalMovement < HARD_MOVEMENT_THRESHOLD;
+
+  const noProgress = Math.abs(earnings - lastEarnings) < 0.5;
+
+  if (barelyMoving && noProgress && elapsed >= HARD_STUCK_TIME) {
+    hardResetWorld(true, 2000);
+    hardStuckStart = null;
+  }
+
+  if (elapsed >= HARD_STUCK_TIME) {
+    hardStuckStart = now;
+    lastEarnings = earnings;
+  }
 }
+
 
 function update() {
   if (grabbedByDarkCloud) {
@@ -873,7 +950,7 @@ function render() {
   silverjetWrap.style.top = (SCREEN_H / 2) + "px";
   silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-  // drawDebugColliders();
+  drawDebugColliders();
 }
 
 update();
