@@ -1,0 +1,10 @@
+- [ ] Add blackHoles array and blackholequantity constant (e.g., 30)
+- [ ] Create spawnBlackHoles() function to spawn black holes randomly
+- [ ] Add CSS for .black-hole class in style.css
+- [ ] Increase WORLDH to 25000 for more space
+- [ ] In resolveCollisions(), add collision check for black holes
+- [ ] On collision: calculate multiplier, multiply earnings, set suckedByBlackHole flag, record original position, teleport to animation position (e.g., camY -= 2000), display growing multiplier text
+- [ ] Add multiplier DOM element and animation logic
+- [ ] After animation (2-3 seconds), reset camX, camY to original, remove black hole, resume physics
+- [ ] Add black hole recycling in recycleClouds() or similar
+- [ ] Test collision, animation, score multiplication, and resumption

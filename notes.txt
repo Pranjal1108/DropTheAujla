@@ -1,6 +1,0 @@
-character fix
-ground fix
-rolling physics fix
-dark clouds animation adding
-jet coming and dropping fix
-fix deadzones: make the deadzones for collectibles and clouds seprarate and join them later so that they can be edited.
