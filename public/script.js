@@ -5,7 +5,7 @@ const CLOUD_RESPAWN_AHEAD = 5000;
 const gameScale = document.getElementById("game-scale");
 function scaleGame() {
   const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1200);
-  gameScale.style.transform = `scale(${scale})`;
+  gameScale.style.setProperty('--game-scale', scale);
 }
 window.addEventListener("resize", scaleGame);
 scaleGame();
@@ -44,8 +44,8 @@ const PRESET_SPAWN_COUNT = 600;
 
 const BH_RADIUS = 75;
 
-const PLAYER_W = 140;
-const PLAYER_H = 210;
+const PLAYER_W = 160;
+const PLAYER_H = 240;
 
 const PLAYER_X = SCREEN_W / 2;
 const PLAYER_Y = SCREEN_H / 2;
@@ -69,6 +69,10 @@ let bhReturnX = 0;
 let bhReturnY = 0;
 let bhTargetMultiplier = 0;
 let bhCurrentMultiplier = 1;
+let bhStartTime = 0;
+let marsSpawned = false;
+
+const bonusSprites = [];
 
 const BONUS_ZONE_X = 0;
 const BONUS_ZONE_Y = -50000;
@@ -76,7 +80,10 @@ const BH_RISE_SPEED = 3;
 
 
 let earnings = 0;
+let fallEarnings = 0;
+let fallScorePaused = false;
 let lastCamY = 0;
+let lastUpdateTime = performance.now();
 
 
 const multiplierEl = document.getElementById("multiplier");
@@ -86,7 +93,7 @@ function showScore() {
 }
 
 function showMultiplier(m) {
-  multiplierEl.textContent = `×${m}`;
+  multiplierEl.textContent = `×${m.toFixed(2)}`;
   multiplierEl.style.display = "block";
 }
 
@@ -160,6 +167,7 @@ betBtn.onclick = () => {
   betPlaced = true;
   betResolved = false;
   lockBetUI();
+  silverjetWrap.style.display = "none";
 };
 
 
@@ -277,7 +285,7 @@ function spawnBlackHoles(count = blackholequantity) {
     el.className = "black-hole";
     el.style.width = "150px";
     el.style.height = "150px";
-    el.style.background = `url('items/black_hole.png') no-repeat center/contain`;
+    el.style.background = `url('items/black_hole_1.png') no-repeat center/contain`;
 
     const x = randX();
     const y = TOP_SAFE + Math.random() * (BOTTOM_SAFE - TOP_SAFE);
@@ -589,12 +597,12 @@ const MASS = 2.2;
 
 function restitutionFromSpeed(v) {
   const s = Math.min(Math.abs(v), 40);
-  if (s < 2) return 0.02;
-  if (s < 8) return 0.12;
-  if (s < 14) return 0.22;
-  if (s < 22) return 0.28;
-  if (s < 30) return 0.24;
-  return 0.18;
+  if (s < 2) return 0.08;
+  if (s < 8) return 0.15;
+  if (s < 14) return 0.25;
+  if (s < 22) return 0.32;
+  if (s < 30) return 0.28;
+  return 0.22;
 }
 
 function recycleClouds() {
@@ -764,34 +772,32 @@ function resolveCollisions() {
 
     if (relNormal < 0) {
       const speed = Math.hypot(relVX, relVY);
-      if (speed >= 1.0) {
-        const e = restitutionFromSpeed(speed);
+      const e = restitutionFromSpeed(speed);
 
-        const rCrossN = rx * ny - ry * nx;
-        const denom = (1 / MASS) + (rCrossN * rCrossN) / I;
+      const rCrossN = rx * ny - ry * nx;
+      const denom = (1 / MASS) + (rCrossN * rCrossN) / I;
 
-        const j = -(1 + e) * relNormal / denom;
+      const j = -(1 + e) * relNormal / denom;
 
-        velX += (j * nx) / MASS;
-        velY += (j * ny) / MASS;
-        angVel += (rCrossN * j) / I;
+      velX += (j * nx) / MASS;
+      velY += (j * ny) / MASS;
+      angVel += (rCrossN * j) / I;
 
-        const vtX = relVX - relNormal * nx;
-        const vtY = relVY - relNormal * ny;
-        const vt = Math.hypot(vtX, vtY);
+      const vtX = relVX - relNormal * nx;
+      const vtY = relVY - relNormal * ny;
+      const vt = Math.hypot(vtX, vtY);
 
-        if (vt > 0.0001) {
-          const tx = vtX / vt;
-          const ty = vtY / vt;
+      if (vt > 0.0001) {
+        const tx = vtX / vt;
+        const ty = vtY / vt;
 
-          let jt = -vt / denom;
-          const maxFriction = muKinetic * Math.abs(j);
-          jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
+        let jt = -vt / denom;
+        const maxFriction = muKinetic * Math.abs(j);
+        jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
 
-          velX += (jt * tx) / MASS;
-          velY += (jt * ty) / MASS;
-          angVel += (rCrossN * jt) / I;
-        }
+        velX += (jt * tx) / MASS;
+        velY += (jt * ty) / MASS;
+        angVel += (rCrossN * jt) / I;
       }
     }
 
@@ -960,12 +966,16 @@ function checkStuck() {
 
 function enterBlackHole(bh) {
   inBlackHole = true;
+  bhStartTime = performance.now();
 
   bhReturnX = camX;
   bhReturnY = camY;
 
-  bhTargetMultiplier = Math.floor(3 + Math.random() * 8);
+  bhTargetMultiplier = 1.5 + Math.random() * 3;
   bhCurrentMultiplier = 1;
+  marsSpawned = false;
+
+  fallScorePaused = true;
 
   camX = BONUS_ZONE_X;
   camY = BONUS_ZONE_Y;
@@ -973,6 +983,31 @@ function enterBlackHole(bh) {
   velX = 0;
   velY = 0;
   angVel = 0;
+
+  // Spawn random quantity of smaller planets, more variety and quantity
+  const planetTypes = ["earthlike", "planet1", "planet2"];
+  const numPlanets = Math.floor(Math.random() * 10) + 10; // 10 to 20 planets for reduced density
+  const usedPositions = [];
+  for (let i = 0; i < numPlanets; i++) {
+    const type = planetTypes[Math.floor(Math.random() * planetTypes.length)];
+    const el = document.createElement("div");
+    el.className = "bonus-sprite " + type;
+    const size = SCREEN_W * (0.1 + Math.random() * 0.2); // Vary sizes
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    let x, y, attempts = 0;
+    do {
+      x = camX + Math.random() * (SCREEN_W - size);
+      y = camY - SCREEN_H * 2 + Math.random() * (SCREEN_H * 5); // Scatter vertically over 5 screen heights for better lengthwise distribution
+      attempts++;
+    } while (usedPositions.some(pos => Math.hypot(pos.x - x, pos.y - y) < size * 1.5) && attempts < 20);
+    usedPositions.push({ x, y });
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    el.style.zIndex = "20";
+    world.appendChild(el);
+    bonusSprites.push({ el, x, y, speed: 3 + Math.random() * 6, type });
+  }
 
   bh.el.remove();
   blackHoles.splice(blackHoles.indexOf(bh), 1);
@@ -983,6 +1018,9 @@ function enterBlackHole(bh) {
 
 function exitBlackHole() {
   inBlackHole = false;
+  fallScorePaused = false;
+  earnings += fallEarnings;
+  fallEarnings = 0;
 
   camX = bhReturnX;
   camY = bhReturnY;
@@ -990,6 +1028,10 @@ function exitBlackHole() {
   velX = 0;
   velY = 0;
   angVel = 0;
+
+  // Clear bonus sprites
+  bonusSprites.forEach(sprite => sprite.el.remove());
+  bonusSprites.length = 0;
 
   hideMultiplier();
   showScore();
@@ -1001,11 +1043,38 @@ function exitBlackHole() {
 function update() {
 
 if (inBlackHole) {
+  const now = performance.now();
+  const elapsed = now - bhStartTime;
+
   camY -= BH_RISE_SPEED;
 
-  if (Math.random() < 0.04) {
-    bhCurrentMultiplier++;
+  // Update bonus sprites
+  bonusSprites.forEach(sprite => {
+    sprite.y += sprite.speed;
+    sprite.el.style.left = sprite.x + "px";
+    sprite.el.style.top = sprite.y + "px";
+  });
+
+  const riseHeight = Math.abs(camY - BONUS_ZONE_Y);
+
+  if (elapsed >= 5000) { // Stay at least 5 seconds
+    bhCurrentMultiplier = 1 + (riseHeight / 60) * 6; // Increase based on rise height, reaching ~7x at 60 height
     showMultiplier(bhCurrentMultiplier);
+
+    if (riseHeight >= 60 && !marsSpawned) { // Spawn based on rise height corresponding to ~7x multiplier
+      // Spawn Mars sprite (bigger and higher up)
+      const marsEl = document.createElement("div");
+      marsEl.className = "bonus-sprite mars";
+      const marsSize = Math.min(SCREEN_W * 0.7, SCREEN_H * 0.7) * 1.3;
+      marsEl.style.width = marsSize + "px";
+      marsEl.style.height = marsSize + "px";
+      marsEl.style.left = (camX + (SCREEN_W - marsSize) / 2) + "px";
+      marsEl.style.top = (camY + (SCREEN_H - marsSize) / 2 - 200) + "px"; // Further up
+      marsEl.style.zIndex = "10";
+      world.appendChild(marsEl);
+      bonusSprites.push({ el: marsEl, x: camX + (SCREEN_W - marsSize) / 2, y: camY + (SCREEN_H - marsSize) / 2 - 200, speed: 4, type: "mars" });
+      marsSpawned = true;
+    }
 
     if (bhCurrentMultiplier >= bhTargetMultiplier) {
       earnings *= bhCurrentMultiplier;
@@ -1066,10 +1135,10 @@ if (inBlackHole) {
 
   angle += angVel;
 
-  if (betPlaced && fallStarted && velY > 0) {
+  if (betPlaced && fallStarted && velY > 0 && !fallScorePaused) {
     const fallDistance = camY - lastCamY;
     if (fallDistance > 2)
-      earnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
+      fallEarnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
   }
 
   function checkPickup(arr) {
@@ -1113,15 +1182,22 @@ if (inBlackHole) {
 }
 
 function render() {
-  scoreEl.textContent = `₹${earnings.toFixed(2)}`;
+  if (inBlackHole) {
+    scoreEl.textContent = `₹${fallEarnings.toFixed(2)}`;
+  } else {
+    scoreEl.textContent = `₹${earnings.toFixed(2)}`;
+  }
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
   silverjetWrap.style.left = (SCREEN_W / 2) + "px";
   silverjetWrap.style.top = (SCREEN_H / 2) + "px";
   silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
   drawDebugColliders();
+  const colliders = getPlayerColliders();
+  const centerX = colliders.reduce((sum, c) => sum + c.x, 0) / colliders.length;
+  const centerY = colliders.reduce((sum, c) => sum + c.y, 0) / colliders.length;
+  sprite.style.left = (centerX - camX - PLAYER_X) + 'px';
+  sprite.style.top = (centerY - camY - PLAYER_Y) + 'px';
+  sprite.style.position = 'absolute';
 }
-
-showScore();
-
 update();

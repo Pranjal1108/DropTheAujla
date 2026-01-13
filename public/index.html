@@ -10,30 +10,7 @@
 <main>
   <div id="viewport">
 
-    <div class="bet-ui">
-      <div class="balance-card" id="balance">Balance ₹1000.00</div>
-
-      <div class="bet-box">
-        <button id="minus">−</button>
-        <input id="betAmount" type="number" min="10" max="999999">
-        <button id="plus">+</button>
-      </div>
-
-      <div class="quick-bets">
-        <button class="chip" data-v="10">₹10</button>
-        <button class="chip" data-v="50">₹50</button>
-        <button class="chip" data-v="100">₹100</button>
-        <button class="chip" data-v="max">MAX</button>
-      </div>
-
-      <button id="placeBet" class="bet-button">PLACE BET</button>
-    </div>
-
     <div id="starfield"></div>
-    <div id="score">₹0</div>
-          <div id="multiplier">×1</div>
-
-    <div id="runOver"></div>
 
     <div id="game-scale">
       <div id="game">
@@ -47,14 +24,41 @@
         </div>
         <canvas id="debugColliders"></canvas>
 
-        <div id="player"></div>
-
-
-          
-          
-          <div id="sprite"></div>
-          <div id="skeleton"></div>
+        <div id="player">
+          <div id="head"></div>
+          <div id="torso"></div>
+          <div id="left-arm"></div>
+          <div id="right-arm"></div>
+          <div id="left-leg"></div>
+          <div id="right-leg"></div>
         </div>
+
+        <div id="sprite"></div>
+        <div id="skeleton"></div>
+
+        <div class="bet-ui">
+          <div class="balance-card" id="balance">Balance ₹1000.00</div>
+
+          <div class="bet-box">
+            <button id="minus">−</button>
+            <input id="betAmount" type="number" min="10" max="999999">
+            <button id="plus">+</button>
+          </div>
+
+          <div class="quick-bets">
+            <button class="chip" data-v="10">₹10</button>
+            <button class="chip" data-v="50">₹50</button>
+            <button class="chip" data-v="100">₹100</button>
+            <button class="chip" data-v="max">MAX</button>
+          </div>
+
+          <button id="placeBet" class="bet-button">PLACE BET</button>
+        </div>
+
+        <div id="score">₹0</div>
+        <div id="multiplier">×1</div>
+
+        <div id="runOver"></div>
       </div>
     </div>
 
