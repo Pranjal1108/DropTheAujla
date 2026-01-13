@@ -60,7 +60,7 @@ let betResolved = false;
 
 const GRAVITY = 0.55;
 const MAX_FALL = 30;
-const AIR_FRICTION = 0.998;
+const AIR_FRICTION = 0.9;
 const GROUND_FRICTION = 0.9;
 
 
@@ -167,7 +167,6 @@ betBtn.onclick = () => {
   betPlaced = true;
   betResolved = false;
   lockBetUI();
-  silverjetWrap.style.display = "none";
 };
 
 
@@ -197,6 +196,7 @@ function hardResetWorld(showLoss = true, delay = 2000) {
     runOverEl.style.display = "none";
     spawnWorld();
     spawnCollectibles(PRESET_SPAWN_COUNT);
+    silverjetWrap.style.display = "block";
     unlockBetUI();
     updateBalanceUI();
   }, delay);
@@ -222,12 +222,12 @@ const blackholequantity = 30;
 const silverjetWrap = document.createElement("div");
 silverjetWrap.style.position = "absolute";
 silverjetWrap.style.pointerEvents = "none";
-silverjetWrap.style.zIndex = "9999999";
+silverjetWrap.style.zIndex = "100000";
 
 const silverjet = document.createElement("div");
 silverjet.className = "silverjet";
 silverjetWrap.appendChild(silverjet);
-document.getElementById("game").appendChild(silverjetWrap);
+world.appendChild(silverjetWrap);
 
 // ========= COLLECTIBLES =========
 // Spawns 2000 collectibles spread across world height, avoiding deadzones and ground zone.
@@ -1138,7 +1138,7 @@ if (inBlackHole) {
   if (betPlaced && fallStarted && velY > 0 && !fallScorePaused) {
     const fallDistance = camY - lastCamY;
     if (fallDistance > 2)
-      fallEarnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
+      earnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
   }
 
   function checkPickup(arr) {
@@ -1188,16 +1188,15 @@ function render() {
     scoreEl.textContent = `₹${earnings.toFixed(2)}`;
   }
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
-  silverjetWrap.style.left = (SCREEN_W / 2) + "px";
-  silverjetWrap.style.top = (SCREEN_H / 2) + "px";
-  silverjetWrap.style.transform = `translate(${-camX}px, ${-camY}px) translate(-50%, -50%)`;
+  silverjetWrap.style.left = PLAYER_X + "px";
+  silverjetWrap.style.top = PLAYER_Y + "px";
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
   drawDebugColliders();
   const colliders = getPlayerColliders();
   const centerX = colliders.reduce((sum, c) => sum + c.x, 0) / colliders.length;
   const centerY = colliders.reduce((sum, c) => sum + c.y, 0) / colliders.length;
-  sprite.style.left = (centerX - camX - PLAYER_X) + 'px';
-  sprite.style.top = (centerY - camY - PLAYER_Y) + 'px';
+  sprite.style.left = (centerX - camX) + 'px';
+  sprite.style.top = (centerY - camY) + 'px';
   sprite.style.position = 'absolute';
 }
 update();
