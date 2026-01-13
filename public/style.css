@@ -69,8 +69,8 @@ body {
   top:50%;
   z-index: 99999;
   transform:translate(-50%,-50%);
-  width:250px;
-  height:340px;
+  width:270px;
+  height:450px;
   pointer-events:none;
   background: url("items/game sprite green.png") no-repeat center/contain;
 }

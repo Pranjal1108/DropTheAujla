@@ -42,7 +42,7 @@ const cloudquantity = 500;
 const darkcloudquantity = 40;
 const PRESET_SPAWN_COUNT = 600;
 
-const BH_RADIUS = 75;
+const BH_RADIUS = 100;
 
 const PLAYER_W = 160;
 const PLAYER_H = 240;
@@ -60,8 +60,8 @@ let betResolved = false;
 
 const GRAVITY = 0.55;
 const MAX_FALL = 30;
-const AIR_FRICTION = 0.9;
-const GROUND_FRICTION = 0.9;
+const AIR_FRICTION = 0.95;
+const GROUND_FRICTION = 0.8;
 
 
 let inBlackHole = false;
@@ -75,7 +75,7 @@ let marsSpawned = false;
 const bonusSprites = [];
 
 const BONUS_ZONE_X = 0;
-const BONUS_ZONE_Y = -50000;
+const BONUS_ZONE_Y = -2500;
 const BH_RISE_SPEED = 3;
 
 
@@ -84,6 +84,7 @@ let fallEarnings = 0;
 let fallScorePaused = false;
 let lastCamY = 0;
 let lastUpdateTime = performance.now();
+let landedTime = 0;
 
 
 const multiplierEl = document.getElementById("multiplier");
@@ -302,7 +303,7 @@ function spawnBlackHoles(count = blackholequantity) {
 // ========= STARFIELD =========
 
 const starfield = document.getElementById("starfield");
-const STAR_COUNT = 250;
+const STAR_COUNT = 220;
 for (let i = 0; i < STAR_COUNT; i++) {
   const star = document.createElement("div");
   star.className = "star";
@@ -593,16 +594,16 @@ function drawDebugColliders() {
 
 // ========= PHYSICS =========
 
-const MASS = 2.2;
+const MASS = 2.0;
 
 function restitutionFromSpeed(v) {
   const s = Math.min(Math.abs(v), 40);
-  if (s < 2) return 0.08;
-  if (s < 8) return 0.15;
-  if (s < 14) return 0.25;
-  if (s < 22) return 0.32;
-  if (s < 30) return 0.28;
-  return 0.22;
+  if (s < 2) return 0.1;
+  if (s < 8) return 0.3;
+  if (s < 14) return 0.5;
+  if (s < 22) return 0.6;
+  if (s < 30) return 0.6;
+  return 0.5;
 }
 
 function recycleClouds() {
@@ -883,12 +884,11 @@ function resolveCollisions() {
 
     if (speed > 0.4) {
       velY = -Math.abs(velY) * e;
-      velY *= 0.55;
+      velY *= 0.65;
 
       const MAX_BOUNCE = 14;
       if (Math.abs(velY) > MAX_BOUNCE) velY = -MAX_BOUNCE;
 
-      velX *= 0.92;
       angVel *= 0.85;
     } else {
       velX *= 0.85;
@@ -971,7 +971,7 @@ function enterBlackHole(bh) {
   bhReturnX = camX;
   bhReturnY = camY;
 
-  bhTargetMultiplier = 1.5 + Math.random() * 3;
+  bhTargetMultiplier = 2 + Math.random() * 13;
   bhCurrentMultiplier = 1;
   marsSpawned = false;
 
@@ -1057,10 +1057,10 @@ if (inBlackHole) {
 
   const riseHeight = Math.abs(camY - BONUS_ZONE_Y);
 
-  if (elapsed >= 5000) { // Stay at least 5 seconds
-    bhCurrentMultiplier = 1 + (riseHeight / 60) * 6; // Increase based on rise height, reaching ~7x at 60 height
-    showMultiplier(bhCurrentMultiplier);
+  bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
+  showMultiplier(bhCurrentMultiplier);
 
+  if (elapsed >= 5000) { // Stay at least 5 seconds
     if (riseHeight >= 60 && !marsSpawned) { // Spawn based on rise height corresponding to ~7x multiplier
       // Spawn Mars sprite (bigger and higher up)
       const marsEl = document.createElement("div");
@@ -1159,19 +1159,25 @@ if (inBlackHole) {
   checkPickup(notes);
 
   if (onGround && fallStarted && !betResolved) {
-    betResolved = true;
-    const payout = earnings;
-    balance += payout;
-    runOverEl.innerHTML = `RUN OVER<br>Total Winnings: ₹${payout.toFixed(2)}`;
-    runOverEl.style.display = "block";
-    fallStarted = false;
-    betPlaced = false;
-    updateBalanceUI();
+    if (landedTime === 0) {
+      landedTime = performance.now();
+    } else if (performance.now() - landedTime > 1000) { // Wait 1 second on ground
+      betResolved = true;
+      const payout = earnings;
+      balance += payout;
+      runOverEl.innerHTML = `RUN OVER<br>Total Winnings: ₹${payout.toFixed(2)}`;
+      runOverEl.style.display = "block";
+      fallStarted = false;
+      betPlaced = false;
+      updateBalanceUI();
 
-    setTimeout(() => {
-      runOverEl.style.display = "none";
-      hardResetWorld(false, 0);
-    }, 5000);
+      setTimeout(() => {
+        runOverEl.style.display = "none";
+        hardResetWorld(false, 0);
+      }, 5000);
+    }
+  } else {
+    landedTime = 0;
   }
 
   lastCamY = camY;
