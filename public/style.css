@@ -232,6 +232,21 @@ body {
 }
 
 
+.tank {
+  position: absolute;
+  width: 400px;
+  height: 300px;
+
+  background-image: url("items/tank.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  pointer-events: none;
+  z-index: 9999999;
+}
+
+
 
 /******** STARFIELD ********/
 #starfield {
@@ -409,6 +424,7 @@ body {
 
 .chain { background-image: url("items/nuke.png"); }
 .music { background-image: url("items/notes.png"); }
+
 .mars { background-image: url("items/mars.png"); }
 .planet1 { background-image: url("items/planet1.png"); }
 .planet2 { background-image: url("items/planet2.png"); }

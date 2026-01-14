@@ -70,7 +70,8 @@ let bhReturnY = 0;
 let bhTargetMultiplier = 0;
 let bhCurrentMultiplier = 1;
 let bhStartTime = 0;
-let marsSpawned = false;
+let marsSpawned = true;
+let tankTouched = false;
 
 const bonusSprites = [];
 
@@ -219,6 +220,8 @@ const chains = [];
 const notes = [];
 const blackHoles = [];
 const blackholequantity = 30;
+let tank = null;
+
 
 const silverjetWrap = document.createElement("div");
 silverjetWrap.style.position = "absolute";
@@ -245,7 +248,7 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
     const el = document.createElement("div");
     let value = 0, arr;
 
-    if (type < 0.55) {
+    if (type < 0.4) {
       el.className = "collectible chain";
       value = 3;
       arr = chains;
@@ -271,6 +274,8 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
     collectibles.push(obj);
   }
 }
+
+
 
 // ========= BLACK HOLES =========
 
@@ -298,6 +303,28 @@ function spawnBlackHoles(count = blackholequantity) {
     blackHoles.push({ x, y, el });
   }
 }
+
+// ========= TANKS =========
+
+function spawnTank() {
+  if (tank) return;
+
+  const el = document.createElement("div");
+  el.className = "tank";
+  el.style.width = "100px";
+  el.style.height = "50px";
+  el.style.background = `url('items/tank.png') no-repeat center/contain`;
+
+  const x = randX();
+  const y = GROUND_Y - 50;
+
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+
+  world.appendChild(el);
+  tank = { x, y, el };
+}
+
 
 
 // ========= STARFIELD =========
@@ -512,6 +539,7 @@ function spawnWorld() {
   for (let i = 0; i < cloudquantity; i++) spawnCloud(randX(), spawnY());
   for (let i = 0; i < darkcloudquantity; i++) spawnDarkCloud(randX(), spawnY());
   spawnBlackHoles(blackholequantity);
+  spawnTank();
 }
 spawnWorld();
 spawnCollectibles(PRESET_SPAWN_COUNT);
@@ -866,6 +894,28 @@ function resolveCollisions() {
   }
 }
 
+  if (tank) {
+  const rect = { x: tank.x, y: tank.y, w: 100, h: 50 };
+
+  for (const p of PLAYER_COLLIDERS) {
+    const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
+    const nearestY = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
+    const dx = p.x - nearestX;
+    const dy = p.y - nearestY;
+
+    if (dx * dx + dy * dy < p.r * p.r) {
+      earnings *= 5;              // 💥 MULTIPLIER
+      showMultiplier(5);
+
+      tank.el.remove();
+      tank = null;
+
+      setTimeout(hideMultiplier, 1200);
+      break;
+    }
+  }
+}
+
 
   let lowest = -Infinity;
   for (const p of PLAYER_COLLIDERS) {
@@ -973,7 +1023,7 @@ function enterBlackHole(bh) {
 
   bhTargetMultiplier = 2 + Math.random() * 13;
   bhCurrentMultiplier = 1;
-  marsSpawned = false;
+  marsSpawned = true;
 
   fallScorePaused = true;
 
