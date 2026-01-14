@@ -42,7 +42,8 @@ const cloudquantity = 500;
 const darkcloudquantity = 40;
 const PRESET_SPAWN_COUNT = 600;
 
-const BH_RADIUS = 100;
+const BH_RADIUS = 150;
+const BH_SIZE = 300;
 
 const PLAYER_W = 160;
 const PLAYER_H = 240;
@@ -87,7 +88,7 @@ let bhRiseHeight = 0;
 const bonusSprites = [];
 
 const BONUS_ZONE_X = 0;
-const BONUS_ZONE_Y = -3500;
+const BONUS_ZONE_Y = -6500;
 const BH_RISE_SPEED = 3;
 
 
@@ -296,13 +297,13 @@ function spawnBlackHoles(count = blackholequantity) {
   blackHoles.length = 0;
 
   const TOP_SAFE = DEADZONE;
-  const BOTTOM_SAFE = GROUND_Y - DEADZONE - 150;
+  const BOTTOM_SAFE = GROUND_Y - DEADZONE - BH_SIZE;
 
   for (let i = 0; i < count; i++) {
     const el = document.createElement("div");
     el.className = "black-hole";
-    el.style.width = "150px";
-    el.style.height = "150px";
+    el.style.width = BH_SIZE + "px";
+    el.style.height = BH_SIZE + "px";
     el.style.background = `url('items/black_hole_1.png') no-repeat center/contain`;
 
     const x = randX();
@@ -312,7 +313,7 @@ function spawnBlackHoles(count = blackholequantity) {
     el.style.top = y + "px";
 
     world.appendChild(el);
-    blackHoles.push({ x, y, el });
+    blackHoles.push({ x, y, el, rotation: 0 });
   }
 }
 
@@ -346,7 +347,7 @@ function spawnCamp() {
   el.className = "military-camp";
   el.style.width = "800px";
   el.style.height = "600px";
-  el.style.background = `url('items/Military_camp.png') no-repeat center/contain`;
+  el.style.background = `url('items/camp.png') no-repeat center/contain`;
 
   const x = randX();
   const y = GROUND_Y - 600;
@@ -412,9 +413,9 @@ function createAnimatedCloud(layer, count, speedMin, speedMax, yMin, yMax, sizeS
   }
 }
 
-createAnimatedCloud(".back", 12, 200, 450, 0, 650, 0.8);
-createAnimatedCloud(".mid", 8, 450, 700, 0, 750, 0.9);
-createAnimatedCloud(".front", 6, 700, 1100, 0, 1000, 1.3);
+createAnimatedCloud(".back", 12, 200, 650, 0, 650, 0.8);
+createAnimatedCloud(".mid", 8, 450, 800, 0, 750, 0.9);
+createAnimatedCloud(".front", 6, 700, 1300, 0, 1000, 1.3);
 
 function animateAnimatedClouds(now) {
   const dt = (now - animated_clouds_lastTime) / 1000;
@@ -741,7 +742,7 @@ function recycleDarkClouds() {
 }
 
 function recycleBlackHoles() {
-  const MAX_H = 150; // Black hole height
+  const MAX_H = BH_SIZE; // Black hole height
 
   const TOP_LIMIT = DEADZONE;
   const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_H;
@@ -751,11 +752,15 @@ function recycleBlackHoles() {
     if (bh.y < TOP_LIMIT - REUSE_DISTANCE) {
       bh.y = TOP_LIMIT + Math.random() * (BOTTOM_LIMIT - TOP_LIMIT);
       bh.x = randX();
+      bh.rotation = 0;
+      bh.el.style.transform = '';
     }
 
     else if (bh.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
       bh.y = TOP_LIMIT + Math.random() * (BOTTOM_LIMIT - TOP_LIMIT);
       bh.x = randX();
+      bh.rotation = 0;
+      bh.el.style.transform = '';
     }
 
     bh.el.style.left = bh.x + "px";
@@ -1139,11 +1144,11 @@ function enterBlackHoleLogic() {
   bhMovingBgEl = document.createElement("div");
   bhMovingBgEl.style.position = "absolute";
   bhMovingBgEl.style.width = (SCREEN_W * 2) + "px";
-  bhMovingBgEl.style.height = SCREEN_H * 3 + "px";
+  bhMovingBgEl.style.height = SCREEN_H * 10 + "px";
   bhMovingBgEl.style.left = camX - SCREEN_W / 2 + "px";
   bhMovingBgEl.style.top = camY - SCREEN_H * 2 + "px";
-  bhMovingBgEl.style.background = `url('items/black_hole_bg.png') repeat center`;
-  bhMovingBgEl.style.backgroundSize = 'cover';
+  bhMovingBgEl.style.background = `url('items/Component 7.svg') repeat center`;
+  bhMovingBgEl.style.backgroundSize = 'auto';
   bhMovingBgEl.style.zIndex = "11";
   world.appendChild(bhMovingBgEl);
 
@@ -1271,6 +1276,20 @@ if (inBlackHole) {
   recycleDarkClouds();
   recycleBlackHoles();
 
+  // Update black hole rotations if player is within 2000x2000 pixel range
+  for (let bh of blackHoles) {
+    const playerX = camX + PLAYER_X;
+    const playerY = camY + PLAYER_Y;
+    const bhCenterX = bh.x + 75;
+    const bhCenterY = bh.y + 75;
+    const dx = Math.abs(bhCenterX - playerX);
+    const dy = Math.abs(bhCenterY - playerY);
+    if (dx <= 1000 && dy <= 1000) {
+      bh.rotation += 0.05;
+      bh.el.style.transform = `rotate(${bh.rotation}rad)`;
+    }
+  }
+
   const onGround = resolveCollisions();
 
   if (fallStarted && !onGround) velY += GRAVITY;
@@ -1359,13 +1378,14 @@ function render() {
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
   silverjetWrap.style.left = PLAYER_X + "px";
   silverjetWrap.style.top = PLAYER_Y + "px";
+  player.style.left = (camX + PLAYER_X) + 'px';
+  player.style.top = (camY + PLAYER_Y) + 'px';
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-  drawDebugColliders();
-  const colliders = getPlayerColliders();
-  const centerX = colliders.reduce((sum, c) => sum + c.x, 0) / colliders.length;
-  const centerY = colliders.reduce((sum, c) => sum + c.y, 0) / colliders.length;
-  sprite.style.left = (centerX - camX) + 'px';
-  sprite.style.top = (centerY - camY) + 'px';
-  sprite.style.position = 'absolute';
+  sprite.style.left = (camX + PLAYER_X) + 'px';
+  sprite.style.top = (camY + PLAYER_Y) + 'px';
+  sprite.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+  skeleton.style.left = (camX + PLAYER_X) + 'px';
+  skeleton.style.top = (camY + PLAYER_Y) + 'px';
+  skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
 }
-update();
+update(); 

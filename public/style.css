@@ -89,8 +89,8 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 160px;
-  height: 240px;
+  width: 270px;
+  height: 450px;
   background: url("items/skeleton.png") no-repeat center/contain;
   pointer-events: none;
   display: none;
@@ -213,7 +213,7 @@ body {
   position: absolute;
   width: 440px;
   height: 320px;
-  background: url("items/Silverjet.png") no-repeat center/contain;
+  background: url("items/plane.png") no-repeat center/contain;
   pointer-events: none;
   z-index: 9999;
   transform: translate(-50%, -50%) scale(4);
