@@ -62,7 +62,7 @@ let betResolved = false;
 const GRAVITY = 0.55;
 const MAX_FALL = 30;
 const AIR_FRICTION = 0.95;
-const GROUND_FRICTION = 0.8;
+const GROUND_FRICTION = 0.2;
 
 
 let inBlackHole = false;
@@ -84,12 +84,19 @@ let bhAnimType = 'enter';
 let bhBgEl = null;
 let bhMovingBgEl = null;
 let bhRiseHeight = 0;
+let bhBgOffsetY = 0;
 
 const bonusSprites = [];
 
+const BONUS_BG_WIDTH = 2220;
+const BONUS_BG_HEIGHT = 6920;
+
 const BONUS_ZONE_X = 0;
-const BONUS_ZONE_Y = -6500;
-const BH_RISE_SPEED = 3;
+const BONUS_ZONE_Y = -BONUS_BG_HEIGHT - 1000;
+const BONUS_START_Y = BONUS_ZONE_Y + BONUS_BG_HEIGHT - 1200;
+
+const BH_RISE_SPEED = 7;
+
 
 
 let earnings = 0;
@@ -231,7 +238,7 @@ const collectibles = [];
 const chains = [];
 const notes = [];
 const blackHoles = [];
-const blackholequantity = 30;
+const blackholequantity = 100;
 let tank = null;
 let camp = null;
 
@@ -246,8 +253,6 @@ silverjet.className = "silverjet";
 silverjetWrap.appendChild(silverjet);
 world.appendChild(silverjetWrap);
 
-// ========= COLLECTIBLES =========
-// Spawns 2000 collectibles spread across world height, avoiding deadzones and ground zone.
 
 function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
   [...collectibles, ...chains, ...notes].forEach(c => c.el.remove());
@@ -364,7 +369,7 @@ function spawnCamp() {
 // ========= STARFIELD =========
 
 const starfield = document.getElementById("starfield");
-const STAR_COUNT = 220;
+const STAR_COUNT = 180;
 for (let i = 0; i < STAR_COUNT; i++) {
   const star = document.createElement("div");
   star.className = "star";
@@ -377,7 +382,7 @@ for (let i = 0; i < STAR_COUNT; i++) {
 
 // ========= ANIMATED DECOR CLOUDS =========
 let CLOUD_ACTIVE_MIN = 0;
-let CLOUD_ACTIVE_MAX = 400;
+let CLOUD_ACTIVE_MAX = 200;
 let playerY = 0;
 
 const animated_clouds = [];
@@ -1085,8 +1090,8 @@ function startBlackHoleAnimation(type, x, y, bh = null) {
   bhAnimating = true;
   bhAnimType = type;
   bhAnimStartTime = performance.now();
-  bhAnimStartSize = type === 'enter' ? 150 : 400;
-  bhAnimEndSize = type === 'enter' ? 400 : 150;
+  bhAnimStartSize = type === 'enter' ? 150 : 800;
+  bhAnimEndSize = type === 'enter' ? 800 : 150;
 
   bhAnimEl = document.createElement("div");
   bhAnimEl.className = "black-hole";
@@ -1123,37 +1128,31 @@ function enterBlackHoleLogic() {
   fallScorePaused = true;
 
   camX = BONUS_ZONE_X;
-  camY = BONUS_ZONE_Y;
+  camY = BONUS_START_Y;
 
   velX = 0;
   velY = 0;
   angVel = 0;
 
-  // Create static space background
-  bhBgEl = document.createElement("div");
-  bhBgEl.style.position = "absolute";
-  bhBgEl.style.width = SCREEN_W + "px";
-  bhBgEl.style.height = SCREEN_H + "px";
-  bhBgEl.style.left = camX + "px";
-  bhBgEl.style.top = camY + "px";
-  bhBgEl.style.background = `url('items/space_bg.png') no-repeat center/cover`;
-  bhBgEl.style.zIndex = "10";
-  world.appendChild(bhBgEl);
-
-  // Create moving background sprite
   bhMovingBgEl = document.createElement("div");
   bhMovingBgEl.style.position = "absolute";
-  bhMovingBgEl.style.width = (SCREEN_W * 2) + "px";
-  bhMovingBgEl.style.height = SCREEN_H * 10 + "px";
-  bhMovingBgEl.style.left = camX - SCREEN_W / 2 + "px";
-  bhMovingBgEl.style.top = camY - SCREEN_H * 2 + "px";
-  bhMovingBgEl.style.background = `url('items/Component 7.svg') repeat center`;
-  bhMovingBgEl.style.backgroundSize = 'auto';
+  bhMovingBgEl.style.width = BONUS_BG_WIDTH + "px";
+  bhMovingBgEl.style.height = BONUS_BG_HEIGHT + "px";
+  bhMovingBgEl.style.left =
+  (SCREEN_W - BONUS_BG_WIDTH) / 2 + "px";
+
+  bhMovingBgEl.style.top = BONUS_ZONE_Y + "px";
+  bhMovingBgEl.style.backgroundImage = "url('items/Bonus_bg.png')";
+  bhMovingBgEl.style.backgroundRepeat = "no-repeat";
+  bhMovingBgEl.style.backgroundSize = BONUS_BG_WIDTH + "px " + BONUS_BG_HEIGHT + "px";
+  bhMovingBgEl.style.backgroundPosition = "0 0";
   bhMovingBgEl.style.zIndex = "11";
+
   world.appendChild(bhMovingBgEl);
 
   showMultiplier(bhCurrentMultiplier);
 }
+
 
 
 function exitBlackHole() {
@@ -1213,11 +1212,7 @@ if (inBlackHole) {
 
   camY -= BH_RISE_SPEED;
 
-  // Move the background sprite down
-  if (bhMovingBgEl) {
-    const currentTop = parseFloat(bhMovingBgEl.style.top);
-    bhMovingBgEl.style.top = (currentTop + BH_RISE_SPEED) + "px";
-  }
+
 
   // Update bonus sprites
   bonusSprites.forEach(sprite => {
@@ -1226,7 +1221,7 @@ if (inBlackHole) {
     sprite.el.style.top = sprite.y + "px";
   });
 
-  const riseHeight = Math.abs(camY - BONUS_ZONE_Y);
+  const riseHeight = BONUS_START_Y - camY;
 
   bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
   showMultiplier(bhCurrentMultiplier);
