@@ -342,7 +342,6 @@ for (let i = 0; i < STAR_COUNT; i++) {
 }
 
 // ========= ANIMATED DECOR CLOUDS =========
-
 let CLOUD_ACTIVE_MIN = 0;
 let CLOUD_ACTIVE_MAX = 400;
 let playerY = 0;
@@ -350,22 +349,33 @@ let playerY = 0;
 const animated_clouds = [];
 let animated_clouds_lastTime = performance.now();
 
-function createAnimatedCloud(layer, count, speedMin, speedMax, yMin, yMax, sizeScale){
+function createAnimatedCloud(layer, count, speedMin, speedMax, yMin, yMax, sizeScale) {
   const container = document.querySelector(layer);
+  if (!container) return;
 
-  for(let i = 0; i < count; i++){
+  for (let i = 0; i < count; i++) {
     const cloud = document.createElement("div");
+
     const scale = (0.7 + Math.random() * 0.6) * sizeScale;
     const y = Math.random() * (yMax - yMin) + yMin;
-    const x = Math.random() * window.innerWidth;
+    const x = Math.random() * window.innerWidth + 600;
     const speed = speedMin + Math.random() * (speedMax - speedMin);
 
+    cloud.style.position = "absolute";
     cloud.style.top = y + "px";
     cloud.style.transform = `translate3d(${x}px, 0, 0) scale(${scale})`;
 
     container.appendChild(cloud);
 
-    animated_clouds.push({ el: cloud, x, y, speed, yMin, yMax });
+    animated_clouds.push({
+      el: cloud,
+      x,
+      y,
+      speed,
+      yMin,
+      yMax,
+      scale
+    });
   }
 }
 
@@ -373,25 +383,21 @@ createAnimatedCloud(".back", 12, 200, 450, 0, 650, 0.8);
 createAnimatedCloud(".mid", 8, 450, 700, 0, 750, 0.9);
 createAnimatedCloud(".front", 6, 700, 1100, 0, 1000, 1.3);
 
-function animateAnimatedClouds(now){
+function animateAnimatedClouds(now) {
   const dt = (now - animated_clouds_lastTime) / 1000;
   animated_clouds_lastTime = now;
 
-  const inRange = playerY >= CLOUD_ACTIVE_MIN && playerY <= CLOUD_ACTIVE_MAX;
+  animated_clouds.forEach(c => {
+    c.x += c.speed * dt;
 
-  if(inRange){
-    animated_clouds.forEach(c => {
-      c.x += c.speed * dt;
+    if (c.x > window.innerWidth + 300) {
+      c.x = -300;
+      c.y = Math.random() * (c.yMax - c.yMin) + c.yMin;
+      c.el.style.top = c.y + "px";
+    }
 
-      if(c.x > window.innerWidth + 300){
-        c.x = -300;
-        c.y = Math.random() * (c.yMax - c.yMin) + c.yMin;
-        c.el.style.top = c.y + "px";
-      }
-
-      c.el.style.transform = `translate3d(${c.x}px, 0, 0)`;
-    });
-  }
+    c.el.style.transform = `translate3d(${c.x}px, 0, 0) scale(${c.scale})`;
+  });
 
   requestAnimationFrame(animateAnimatedClouds);
 }
@@ -1023,7 +1029,7 @@ function enterBlackHole(bh) {
 
   bhTargetMultiplier = 2 + Math.random() * 13;
   bhCurrentMultiplier = 1;
-  marsSpawned = true;
+  marsSpawned = false;
 
   fallScorePaused = true;
 
@@ -1110,26 +1116,24 @@ if (inBlackHole) {
   bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
   showMultiplier(bhCurrentMultiplier);
 
-  if (elapsed >= 5000) { // Stay at least 5 seconds
-    if (riseHeight >= 60 && !marsSpawned) { // Spawn based on rise height corresponding to ~7x multiplier
-      // Spawn Mars sprite (bigger and higher up)
-      const marsEl = document.createElement("div");
-      marsEl.className = "bonus-sprite mars";
-      const marsSize = Math.min(SCREEN_W * 0.7, SCREEN_H * 0.7) * 1.3;
-      marsEl.style.width = marsSize + "px";
-      marsEl.style.height = marsSize + "px";
-      marsEl.style.left = (camX + (SCREEN_W - marsSize) / 2) + "px";
-      marsEl.style.top = (camY + (SCREEN_H - marsSize) / 2 - 200) + "px"; // Further up
-      marsEl.style.zIndex = "10";
-      world.appendChild(marsEl);
-      bonusSprites.push({ el: marsEl, x: camX + (SCREEN_W - marsSize) / 2, y: camY + (SCREEN_H - marsSize) / 2 - 200, speed: 4, type: "mars" });
-      marsSpawned = true;
-    }
+  if (bhCurrentMultiplier >= 2 && !marsSpawned) { // Spawn Mars at exactly 2x multiplier
+    // Spawn Mars sprite (visible size and position)
+    const marsEl = document.createElement("div");
+    marsEl.className = "bonus-sprite mars";
+    const marsSize = Math.min(SCREEN_W * 0.3, SCREEN_H * 0.3);
+    marsEl.style.width = marsSize + "px";
+    marsEl.style.height = marsSize + "px";
+    marsEl.style.left = (camX + PLAYER_X - marsSize / 2) + "px";
+    marsEl.style.top = (camY + PLAYER_Y - marsSize - 100) + "px"; // Position above the player
+    marsEl.style.zIndex = "100000";
+    world.appendChild(marsEl);
+    bonusSprites.push({ el: marsEl, x: camX + PLAYER_X - marsSize / 2, y: camY + PLAYER_Y - marsSize - 100, speed: 4, type: "mars" });
+    marsSpawned = true;
+  }
 
-    if (bhCurrentMultiplier >= bhTargetMultiplier) {
-      earnings *= bhCurrentMultiplier;
-      exitBlackHole();
-    }
+  if (bhCurrentMultiplier >= bhTargetMultiplier) {
+    earnings *= bhCurrentMultiplier;
+    exitBlackHole();
   }
 
   showScore();

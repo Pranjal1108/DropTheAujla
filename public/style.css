@@ -169,39 +169,41 @@ body {
   overflow:hidden;
 }
 
-/* Each cloud layer */
-.cloud-layer{
-  position:absolute;
-  top:0;
-  width:100%;
-  height:100%;
-  pointer-events:none;
+/* ===============================
+   CLOUD LAYERS (UI / SCREEN SPACE)
+   =============================== */
+
+.cloud-layer {
+  position: absolute;
+  inset: -300px;        /* 🔥 expands layer so clouds never get clipped */
+  pointer-events: none;
+  overflow: visible;    /* 🔥 allow clouds to move outside viewport */
 }
 
 /* Back Layer (smallest & slowest) */
-.back div{
-  position:absolute;
-  width:120px;
-  height:70px;
-  background:url("items/movcloud1.png") no-repeat center/contain;
-  opacity:0.6;
+.back div {
+  position: absolute;
+  width: 120px;
+  height: 70px;
+  background: url("items/movcloud1.png") no-repeat center / contain;
+  opacity: 0.6;
 }
 
 /* Mid Layer */
-.mid div{
-  position:absolute;
-  width:180px;
-  height:100px;
-  background:url("items/movcloud2.png") no-repeat center/contain;
-  opacity:0.8;
+.mid div {
+  position: absolute;
+  width: 180px;
+  height: 100px;
+  background: url("items/movcloud2.png") no-repeat center / contain;
+  opacity: 0.8;
 }
 
 /* Front Layer (big boi) */
-.front div{
-  position:absolute;
-  width:250px;
-  height:140px;
-  background:url("items/movcloud3.png") no-repeat center/contain;
+.front div {
+  position: absolute;
+  width: 250px;
+  height: 140px;
+  background: url("items/movcloud3.png") no-repeat center / contain;
 }
 
 
