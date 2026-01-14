@@ -23,10 +23,10 @@ body {
 }
 
 #game {
-  width: 1919px;
+  width: 1920px;
   height: 1151px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -67,7 +67,7 @@ body {
   position:absolute;
   left:50%;
   top:50%;
-  z-index: 99999;
+  z-index: 9998;
   transform:translate(-50%,-50%);
   width:270px;
   height:450px;
@@ -80,7 +80,7 @@ body {
   width: 160px;
   height: 240px;
   pointer-events: none;
-  z-index: 99999;
+  z-index: 9998;
 }
 
 
@@ -166,7 +166,7 @@ body {
   width:100vw;
   height:100vh;
   position:relative;
-  overflow:hidden;
+  overflow:visible;
 }
 
 /* ===============================

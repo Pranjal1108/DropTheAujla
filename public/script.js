@@ -1138,11 +1138,12 @@ function enterBlackHoleLogic() {
   // Create moving background sprite
   bhMovingBgEl = document.createElement("div");
   bhMovingBgEl.style.position = "absolute";
-  bhMovingBgEl.style.width = SCREEN_W + "px";
+  bhMovingBgEl.style.width = (SCREEN_W * 2) + "px";
   bhMovingBgEl.style.height = SCREEN_H * 3 + "px";
-  bhMovingBgEl.style.left = camX + "px";
+  bhMovingBgEl.style.left = camX - SCREEN_W / 2 + "px";
   bhMovingBgEl.style.top = camY - SCREEN_H * 2 + "px";
-  bhMovingBgEl.style.background = `url('items/black_hole_bg.png') repeat-y center`;
+  bhMovingBgEl.style.background = `url('items/black_hole_bg.png') repeat center`;
+  bhMovingBgEl.style.backgroundSize = 'cover';
   bhMovingBgEl.style.zIndex = "11";
   world.appendChild(bhMovingBgEl);
 
@@ -1290,12 +1291,26 @@ if (inBlackHole) {
   }
 
   function checkPickup(arr) {
+    const playerColliders = getPlayerColliders();
+    const itemRadius = 85; // Assuming 170px width/height, so radius 85
+
     for (let i = arr.length - 1; i >= 0; i--) {
       const c = arr[i];
-      if (
-        Math.abs(camX + PLAYER_X - c.x) < 120 &&
-        Math.abs(camY + PLAYER_Y - c.y) < 120
-      ) {
+      let pickedUp = false;
+
+      for (const pc of playerColliders) {
+        const dx = pc.x - c.x;
+        const dy = pc.y - c.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = pc.r + itemRadius;
+
+        if (distSq < minDist * minDist) {
+          pickedUp = true;
+          break;
+        }
+      }
+
+      if (pickedUp) {
         earnings += c.value;
         c.el.remove();
         arr.splice(i, 1);
