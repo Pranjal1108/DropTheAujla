@@ -175,9 +175,9 @@ body {
 
 .cloud-layer {
   position: absolute;
-  inset: -300px;        /* 🔥 expands layer so clouds never get clipped */
+  inset: -300px;        
   pointer-events: none;
-  overflow: visible;    /* 🔥 allow clouds to move outside viewport */
+  overflow: visible;    
 }
 
 /* Back Layer (smallest & slowest) */
@@ -236,10 +236,24 @@ body {
 
 .tank {
   position: absolute;
-  width: 400px;
-  height: 300px;
+  width: 500px;
+  height: 375px;
 
   background-image: url("items/tank.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+
+  pointer-events: none;
+  z-index: 9999999;
+}
+
+.military-camp {
+  position: absolute;
+  width: 800px;
+  height: 600px;
+
+  background-image: url("items/Military_camp.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;

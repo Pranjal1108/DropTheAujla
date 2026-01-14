@@ -70,13 +70,24 @@ let bhReturnY = 0;
 let bhTargetMultiplier = 0;
 let bhCurrentMultiplier = 1;
 let bhStartTime = 0;
-let marsSpawned = true;
+
 let tankTouched = false;
+
+let bhAnimating = false;
+let bhAnimEl = null;
+let bhAnimStartTime = 0;
+let bhAnimDuration = 1000;
+let bhAnimStartSize = 150;
+let bhAnimEndSize = 400;
+let bhAnimType = 'enter';
+let bhBgEl = null;
+let bhMovingBgEl = null;
+let bhRiseHeight = 0;
 
 const bonusSprites = [];
 
 const BONUS_ZONE_X = 0;
-const BONUS_ZONE_Y = -2500;
+const BONUS_ZONE_Y = -3500;
 const BH_RISE_SPEED = 3;
 
 
@@ -221,6 +232,7 @@ const notes = [];
 const blackHoles = [];
 const blackholequantity = 30;
 let tank = null;
+let camp = null;
 
 
 const silverjetWrap = document.createElement("div");
@@ -311,18 +323,39 @@ function spawnTank() {
 
   const el = document.createElement("div");
   el.className = "tank";
-  el.style.width = "100px";
-  el.style.height = "50px";
+  el.style.width = "500px";
+  el.style.height = "375px";
   el.style.background = `url('items/tank.png') no-repeat center/contain`;
 
   const x = randX();
-  const y = GROUND_Y - 50;
+  const y = GROUND_Y - 375;
 
   el.style.left = x + "px";
   el.style.top = y + "px";
 
   world.appendChild(el);
   tank = { x, y, el };
+}
+
+// ========= MILITARY CAMP =========
+
+function spawnCamp() {
+  if (camp) return;
+
+  const el = document.createElement("div");
+  el.className = "military-camp";
+  el.style.width = "800px";
+  el.style.height = "600px";
+  el.style.background = `url('items/Military_camp.png') no-repeat center/contain`;
+
+  const x = randX();
+  const y = GROUND_Y - 600;
+
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+
+  world.appendChild(el);
+  camp = { x, y, el };
 }
 
 
@@ -545,7 +578,8 @@ function spawnWorld() {
   for (let i = 0; i < cloudquantity; i++) spawnCloud(randX(), spawnY());
   for (let i = 0; i < darkcloudquantity; i++) spawnDarkCloud(randX(), spawnY());
   spawnBlackHoles(blackholequantity);
-  spawnTank();
+  spawnTank(20);
+  spawnCamp(20);
 }
 spawnWorld();
 spawnCollectibles(PRESET_SPAWN_COUNT);
@@ -901,7 +935,7 @@ function resolveCollisions() {
 }
 
   if (tank) {
-  const rect = { x: tank.x, y: tank.y, w: 100, h: 50 };
+  const rect = { x: tank.x, y: tank.y, w: 400, h: 300 };
 
   for (const p of PLAYER_COLLIDERS) {
     const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
@@ -910,11 +944,33 @@ function resolveCollisions() {
     const dy = p.y - nearestY;
 
     if (dx * dx + dy * dy < p.r * p.r) {
-      earnings *= 5;              // 💥 MULTIPLIER
+      earnings *= 5;              //  MULTIPLIER
       showMultiplier(5);
 
       tank.el.remove();
       tank = null;
+
+      setTimeout(hideMultiplier, 1200);
+      break;
+    }
+  }
+}
+
+  if (camp) {
+  const rect = { x: camp.x, y: camp.y, w: 800, h: 600 };
+
+  for (const p of PLAYER_COLLIDERS) {
+    const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
+    const nearestY = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
+    const dx = p.x - nearestX;
+    const dy = p.y - nearestY;
+
+    if (dx * dx + dy * dy < p.r * p.r) {
+      earnings *= 50;              // MULTIPLIER
+      showMultiplier(50);
+
+      camp.el.remove();
+      camp = null;
 
       setTimeout(hideMultiplier, 1200);
       break;
@@ -1020,7 +1076,35 @@ function checkStuck() {
 //======black hole logic=====
 
 
+function startBlackHoleAnimation(type, x, y, bh = null) {
+  bhAnimating = true;
+  bhAnimType = type;
+  bhAnimStartTime = performance.now();
+  bhAnimStartSize = type === 'enter' ? 150 : 400;
+  bhAnimEndSize = type === 'enter' ? 400 : 150;
+
+  bhAnimEl = document.createElement("div");
+  bhAnimEl.className = "black-hole";
+  bhAnimEl.style.width = bhAnimStartSize + "px";
+  bhAnimEl.style.height = bhAnimStartSize + "px";
+  bhAnimEl.style.left = (x - bhAnimStartSize / 2) + "px";
+  bhAnimEl.style.top = (y - bhAnimStartSize / 2) + "px";
+  bhAnimEl.style.background = `url('items/black_hole_1.png') no-repeat center/contain`;
+  bhAnimEl.dataset.x = x;
+  bhAnimEl.dataset.y = y;
+  world.appendChild(bhAnimEl);
+
+  if (type === 'enter' && bh) {
+    bh.el.remove();
+    blackHoles.splice(blackHoles.indexOf(bh), 1);
+  }
+}
+
 function enterBlackHole(bh) {
+  startBlackHoleAnimation('enter', bh.x + 75, bh.y + 75, bh);
+}
+
+function enterBlackHoleLogic() {
   inBlackHole = true;
   bhStartTime = performance.now();
 
@@ -1029,7 +1113,7 @@ function enterBlackHole(bh) {
 
   bhTargetMultiplier = 2 + Math.random() * 13;
   bhCurrentMultiplier = 1;
-  marsSpawned = false;
+  bhRiseHeight = 0;
 
   fallScorePaused = true;
 
@@ -1040,33 +1124,27 @@ function enterBlackHole(bh) {
   velY = 0;
   angVel = 0;
 
-  // Spawn random quantity of smaller planets, more variety and quantity
-  const planetTypes = ["earthlike", "planet1", "planet2"];
-  const numPlanets = Math.floor(Math.random() * 10) + 10; // 10 to 20 planets for reduced density
-  const usedPositions = [];
-  for (let i = 0; i < numPlanets; i++) {
-    const type = planetTypes[Math.floor(Math.random() * planetTypes.length)];
-    const el = document.createElement("div");
-    el.className = "bonus-sprite " + type;
-    const size = SCREEN_W * (0.1 + Math.random() * 0.2); // Vary sizes
-    el.style.width = size + "px";
-    el.style.height = size + "px";
-    let x, y, attempts = 0;
-    do {
-      x = camX + Math.random() * (SCREEN_W - size);
-      y = camY - SCREEN_H * 2 + Math.random() * (SCREEN_H * 5); // Scatter vertically over 5 screen heights for better lengthwise distribution
-      attempts++;
-    } while (usedPositions.some(pos => Math.hypot(pos.x - x, pos.y - y) < size * 1.5) && attempts < 20);
-    usedPositions.push({ x, y });
-    el.style.left = x + "px";
-    el.style.top = y + "px";
-    el.style.zIndex = "20";
-    world.appendChild(el);
-    bonusSprites.push({ el, x, y, speed: 3 + Math.random() * 6, type });
-  }
+  // Create static space background
+  bhBgEl = document.createElement("div");
+  bhBgEl.style.position = "absolute";
+  bhBgEl.style.width = SCREEN_W + "px";
+  bhBgEl.style.height = SCREEN_H + "px";
+  bhBgEl.style.left = camX + "px";
+  bhBgEl.style.top = camY + "px";
+  bhBgEl.style.background = `url('items/space_bg.png') no-repeat center/cover`;
+  bhBgEl.style.zIndex = "10";
+  world.appendChild(bhBgEl);
 
-  bh.el.remove();
-  blackHoles.splice(blackHoles.indexOf(bh), 1);
+  // Create moving background sprite
+  bhMovingBgEl = document.createElement("div");
+  bhMovingBgEl.style.position = "absolute";
+  bhMovingBgEl.style.width = SCREEN_W + "px";
+  bhMovingBgEl.style.height = SCREEN_H * 3 + "px";
+  bhMovingBgEl.style.left = camX + "px";
+  bhMovingBgEl.style.top = camY - SCREEN_H * 2 + "px";
+  bhMovingBgEl.style.background = `url('items/black_hole_bg.png') repeat-y center`;
+  bhMovingBgEl.style.zIndex = "11";
+  world.appendChild(bhMovingBgEl);
 
   showMultiplier(bhCurrentMultiplier);
 }
@@ -1098,11 +1176,42 @@ function exitBlackHole() {
 
 function update() {
 
+if (bhAnimating) {
+  const now = performance.now();
+  const elapsed = now - bhAnimStartTime;
+  const progress = Math.min(elapsed / bhAnimDuration, 1);
+  const currentSize = bhAnimStartSize + (bhAnimEndSize - bhAnimStartSize) * progress;
+
+  bhAnimEl.style.width = currentSize + "px";
+  bhAnimEl.style.height = currentSize + "px";
+  bhAnimEl.style.left = (parseFloat(bhAnimEl.dataset.x) - currentSize / 2) + "px";
+  bhAnimEl.style.top = (parseFloat(bhAnimEl.dataset.y) - currentSize / 2) + "px";
+
+  if (progress >= 1) {
+    bhAnimating = false;
+    if (bhAnimType === 'enter') {
+      enterBlackHoleLogic();
+    }
+    bhAnimEl.remove();
+    bhAnimEl = null;
+  }
+
+  render();
+  requestAnimationFrame(update);
+  return;
+}
+
 if (inBlackHole) {
   const now = performance.now();
   const elapsed = now - bhStartTime;
 
   camY -= BH_RISE_SPEED;
+
+  // Move the background sprite down
+  if (bhMovingBgEl) {
+    const currentTop = parseFloat(bhMovingBgEl.style.top);
+    bhMovingBgEl.style.top = (currentTop + BH_RISE_SPEED) + "px";
+  }
 
   // Update bonus sprites
   bonusSprites.forEach(sprite => {
@@ -1115,21 +1224,6 @@ if (inBlackHole) {
 
   bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
   showMultiplier(bhCurrentMultiplier);
-
-  if (bhCurrentMultiplier >= 2 && !marsSpawned) { // Spawn Mars at exactly 2x multiplier
-    // Spawn Mars sprite (visible size and position)
-    const marsEl = document.createElement("div");
-    marsEl.className = "bonus-sprite mars";
-    const marsSize = Math.min(SCREEN_W * 0.3, SCREEN_H * 0.3);
-    marsEl.style.width = marsSize + "px";
-    marsEl.style.height = marsSize + "px";
-    marsEl.style.left = (camX + PLAYER_X - marsSize / 2) + "px";
-    marsEl.style.top = (camY + PLAYER_Y - marsSize - 100) + "px"; // Position above the player
-    marsEl.style.zIndex = "100000";
-    world.appendChild(marsEl);
-    bonusSprites.push({ el: marsEl, x: camX + PLAYER_X - marsSize / 2, y: camY + PLAYER_Y - marsSize - 100, speed: 4, type: "mars" });
-    marsSpawned = true;
-  }
 
   if (bhCurrentMultiplier >= bhTargetMultiplier) {
     earnings *= bhCurrentMultiplier;
