@@ -42,7 +42,7 @@ const cloudquantity = 500;
 const darkcloudquantity = 40;
 const PRESET_SPAWN_COUNT = 600;
 
-const BH_RADIUS = 150;
+const BH_RADIUS = 100;
 const BH_SIZE = 300;
 
 const PLAYER_W = 160;
@@ -146,7 +146,7 @@ function unlockBetUI() {
 
 function updateBalanceUI() {
   balanceEl.textContent = `Balance ₹${balance.toFixed(2)}`;
-  betInput.value = betAmount;
+  betInput.value = betAmount.toFixed(2);
   betBtn.disabled = betAmount > balance || betAmount <= 0 || fallStarted;
 }
 
@@ -164,11 +164,11 @@ minusBtn.onclick = () => {
 
 betInput.oninput = () => {
   if (fallStarted) {
-    betInput.value = betAmount;
+    betInput.value = betAmount.toFixed(2);
     return;
   }
   betAmount = Math.max(10, Math.min(balance, Number(betInput.value) || 10));
-  betInput.value = betAmount;
+  betInput.value = betAmount.toFixed(2);
   updateBalanceUI();
 };
 
@@ -177,7 +177,7 @@ document.querySelectorAll(".chip").forEach(c => {
     if (fallStarted) return;
     const v = c.dataset.v;
     if (v === "max") betAmount = balance;
-    else betAmount = Math.min(balance, Number(v));
+    else betAmount = Math.min(balance, betAmount + Number(v));
     updateBalanceUI();
   };
 });
@@ -600,12 +600,12 @@ spawnCollectibles(PRESET_SPAWN_COUNT);
 // ========= PLAYER COLLIDERS =========
 
 const ELLIPSES = [
-  { x: 0.2857, y: 0.0190, w: 0.4357, h: 0.4048 }
+  { x: 0.2357, y: 0.0190, w: 0.4357, h: 0.4048 }
 ];
 
 const RECTS = [
-  { x: 0.1571, y: 0.3905, w: 0.6857, h: 0.3476 },
-  { x: 0.2714, y: 0.7333, w: 0.4571, h: 0.2381 }
+  { x: 0.1071, y: 0.3905, w: 0.6857, h: 0.3476 },
+  { x: 0.2214, y: 0.7333, w: 0.4571, h: 0.2381 }
 ];
 
 function getPlayerColliders() {
@@ -669,6 +669,22 @@ function drawDebugColliders() {
     dctx.beginPath();
     dctx.arc(c.x - camX, c.y - camY, 2, 0, Math.PI * 2);
     dctx.fillStyle = "red";
+    dctx.fill();
+  });
+
+  // Draw black hole colliders
+  blackHoles.forEach(bh => {
+    const bx = bh.x + BH_SIZE / 2;
+    const by = bh.y + BH_SIZE / 2;
+    dctx.beginPath();
+    dctx.arc(bx - camX, by - camY, BH_RADIUS, 0, Math.PI * 2);
+    dctx.strokeStyle = "rgba(0,255,0,0.9)"; // Green for black holes
+    dctx.lineWidth = 2;
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.arc(bx - camX, by - camY, 2, 0, Math.PI * 2);
+    dctx.fillStyle = "green";
     dctx.fill();
   });
 }
@@ -937,8 +953,8 @@ function resolveCollisions() {
   }
 
   for (const bh of blackHoles) {
-  const bx = bh.x + 75;
-  const by = bh.y + 75;
+  const bx = bh.x + BH_SIZE / 2;
+  const by = bh.y + BH_SIZE / 2;
 
   for (const p of PLAYER_COLLIDERS) {
     const dx = p.x - bx;
@@ -1118,7 +1134,7 @@ function startBlackHoleAnimation(type, x, y, bh = null) {
 }
 
 function enterBlackHole(bh) {
-  startBlackHoleAnimation('enter', bh.x + 75, bh.y + 75, bh);
+  startBlackHoleAnimation('enter', bh.x + 50, bh.y + 50, bh);
 }
 
 function enterBlackHoleLogic() {
@@ -1320,8 +1336,8 @@ if (inBlackHole) {
   for (let bh of blackHoles) {
     const playerX = camX + PLAYER_X;
     const playerY = camY + PLAYER_Y;
-    const bhCenterX = bh.x + 75;
-    const bhCenterY = bh.y + 75;
+    const bhCenterX = bh.x + BH_SIZE / 2;
+    const bhCenterY = bh.y + BH_SIZE / 2;
     const dx = Math.abs(bhCenterX - playerX);
     const dy = Math.abs(bhCenterY - playerY);
     if (dx <= 1000 && dy <= 1000) {
@@ -1428,5 +1444,6 @@ function render() {
   skeleton.style.left = (camX + PLAYER_X) + 'px';
   skeleton.style.top = (camY + PLAYER_Y) + 'px';
   skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+  
 }
 update(); 
