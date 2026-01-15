@@ -438,7 +438,7 @@ body {
   pointer-events: none;
 }
 
-.chain { background-image: url("items/nuke.png"); }
+.chain { background-image: url("items/nuke.png"); width: 200px; height: 200px; }
 .music { background-image: url("items/notes.png"); }
 
 .mars { background-image: url("items/mars.png"); }

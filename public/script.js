@@ -287,10 +287,10 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
     let y;
     do {
       y = Math.random() * WORLDH;
-    } while (y < TOP_SAFE || (y > BOTTOM_SAFE_START && y < GROUND_Y));
+    } while (y < TOP_SAFE || y > BOTTOM_SAFE_START);
 
-    el.style.left = x + "px";
-    el.style.top = y + "px";
+    el.style.left = (x - 85) + "px";
+    el.style.top = (y - 85) + "px";
 
     world.appendChild(el);
     const obj = { x, y, value, el };
@@ -687,6 +687,20 @@ function drawDebugColliders() {
     dctx.fillStyle = "green";
     dctx.fill();
   });
+
+  // Draw collectible colliders
+  collectibles.forEach(c => {
+    dctx.beginPath();
+    dctx.arc(c.x - camX, c.y - camY, 85, 0, Math.PI * 2);
+    dctx.strokeStyle = "rgba(255,0,255,0.9)"; // Magenta for collectibles
+    dctx.lineWidth = 2;
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.arc(c.x - camX, c.y - camY, 2, 0, Math.PI * 2);
+    dctx.fillStyle = "magenta";
+    dctx.fill();
+  });
 }
 
 // ========= PHYSICS =========
@@ -842,6 +856,8 @@ function resolveCollisions() {
       }
     }
   }
+
+
 
   if (contacts.length > 0) {
     let nx = 0, ny = 0, depth = 0;
@@ -1058,6 +1074,7 @@ const HARD_MOVEMENT_THRESHOLD = 25;
 function checkStuck() {
 
   if (inBlackHole) return;
+  if (bhAnimating) return;
 
   if (!betPlaced || !fallStarted) {
     stuckStartTime = null;
