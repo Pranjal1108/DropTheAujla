@@ -68,9 +68,14 @@ const GROUND_FRICTION = 0.2;
 let inBlackHole = false;
 let bhReturnX = 0;
 let bhReturnY = 0;
+let bhExitX = 0;
+let bhExitY = 0;
 let bhTargetMultiplier = 0;
 let bhCurrentMultiplier = 1;
 let bhStartTime = 0;
+let originalSpriteBg = '';
+let exitingAnimation = false;
+let exitAnimStart = 0;
 
 let tankTouched = false;
 
@@ -110,6 +115,7 @@ let landedTime = 0;
 const multiplierEl = document.getElementById("multiplier");
 
 function showScore() {
+  scoreEl.style.display = "block";
   scoreEl.textContent = `₹${earnings.toFixed(2)}`;
 }
 
@@ -557,6 +563,7 @@ let freezeX = 0, freezeY = 0;
 
 const skeleton = document.getElementById("skeleton");
 const sprite = document.getElementById("sprite");
+sprite.style.backgroundImage = "url('items/game sprite green.png')";
 let skeletonFlashInterval = null;
 
 function spawnDarkCloud(x, y) {
@@ -1150,6 +1157,10 @@ function enterBlackHoleLogic() {
 
   world.appendChild(bhMovingBgEl);
 
+  // Swap sprite to jetpack in bonus zone
+  originalSpriteBg = sprite.style.backgroundImage;
+  sprite.style.backgroundImage = "url('items/jetpack.png')";
+
   showMultiplier(bhCurrentMultiplier);
 }
 
@@ -1171,6 +1182,20 @@ function exitBlackHole() {
   // Clear bonus sprites
   bonusSprites.forEach(sprite => sprite.el.remove());
   bonusSprites.length = 0;
+
+  // Restore original sprite
+  sprite.style.backgroundImage = originalSpriteBg;
+
+  // Set exit position for animation
+  bhExitX = camX + PLAYER_X;
+  bhExitY = camY + PLAYER_Y;
+
+  // Start black hole exit animation
+  startBlackHoleAnimation('exit', bhExitX, bhExitY);
+
+  // Start sprite exit animation
+  exitingAnimation = true;
+  exitAnimStart = performance.now();
 
   hideMultiplier();
   showScore();
@@ -1199,6 +1224,26 @@ if (bhAnimating) {
     }
     bhAnimEl.remove();
     bhAnimEl = null;
+  }
+
+  render();
+  requestAnimationFrame(update);
+  return;
+}
+
+if (exitingAnimation) {
+  const now = performance.now();
+  const elapsed = now - exitAnimStart;
+  const duration = 1000; // 1 second animation
+  const progress = Math.min(elapsed / duration, 1);
+
+  // Simple scale animation
+  const scale = 1 + Math.sin(progress * Math.PI) * 0.2;
+  sprite.style.transform = `translate(-50%, -50%) scale(${scale}) rotate(${angle}rad)`;
+
+  if (progress >= 1) {
+    exitingAnimation = false;
+    sprite.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
   }
 
   render();
@@ -1366,8 +1411,9 @@ if (inBlackHole) {
 
 function render() {
   if (inBlackHole) {
-    scoreEl.textContent = `₹${fallEarnings.toFixed(2)}`;
+    scoreEl.style.display = "none";
   } else {
+    scoreEl.style.display = "block";
     scoreEl.textContent = `₹${earnings.toFixed(2)}`;
   }
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
@@ -1378,7 +1424,7 @@ function render() {
   player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
   sprite.style.left = (camX + PLAYER_X) + 'px';
   sprite.style.top = (camY + PLAYER_Y) + 'px';
-  sprite.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+  sprite.style.transform = `translate(-50%, -50%) rotate(${inBlackHole ? 0 : angle}rad)`;
   skeleton.style.left = (camX + PLAYER_X) + 'px';
   skeleton.style.top = (camY + PLAYER_Y) + 'px';
   skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;

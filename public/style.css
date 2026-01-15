@@ -72,15 +72,15 @@ body {
   width:270px;
   height:450px;
   pointer-events:none;
-  background: url("items/game sprite green.png") no-repeat center/contain;
 }
 
 #sprite {
   position: absolute;
-  width: 160px;
-  height: 240px;
+  width: 300px;
+  height: 400px;
   pointer-events: none;
   z-index: 9998;
+  background: url("items/game sprite green.png") no-repeat center/contain;
 }
 
 
