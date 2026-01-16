@@ -26,8 +26,7 @@ let balance = 1000;
 let betAmount = 10;
 let bonusMode = false;
 
-let targetPayout = 0;
-let outcomeType = null;
+
 
 const SCREEN_W = 1920;
 const SCREEN_H = 1200;
@@ -99,6 +98,7 @@ let bhBgEl = null;
 let bhMovingBgEl = null;
 let bhRiseHeight = 0;
 let bhBgOffsetY = 0;
+let bhShowcaseStart = 0;
 
 const voidSprites = [];
 
@@ -119,7 +119,10 @@ let fallScorePaused = false;
 let lastCamY = 0;
 let lastUpdateTime = performance.now();
 let landedTime = 0;
-let payoutReached = false;
+let originalEarnings = 0;
+let finalEarnings = 0;
+let showcaseScore = 0;
+
 
 
 const multiplierEl = document.getElementById("multiplier");
@@ -206,7 +209,6 @@ betBtn.onclick = () => {
   const effectiveBet = bonusMode ? betAmount * 10 : betAmount;
   if (effectiveBet > balance) return;
   balance -= effectiveBet;
-  decideOutcome(betAmount); // Use original betAmount for outcome calculation
   updateBalanceUI();
   camX = camY = velX = velY = angle = angVel = 0;
   earnings = 0;
@@ -214,7 +216,6 @@ betBtn.onclick = () => {
   fallStarted = true;
   betPlaced = true;
   betResolved = false;
-  payoutReached = false;
   lockBetUI();
 };
 
@@ -310,7 +311,7 @@ const blackholequantity = 100;
 let tank = null;
 let camp = null;
 const pushables = [];
-const pushablequantity = 100;
+const pushablequantity = 400;
 
 
 const silverjetWrap = document.createElement("div");
@@ -1126,7 +1127,7 @@ function resolveCollisions() {
     const dy = p.y - nearestY;
 
     if (dx * dx + dy * dy < p.r * p.r) {
-      earnings = Math.min(earnings * 50, targetPayout);              // MULTIPLIER
+      earnings *= 50;              // MULTIPLIER
       showMultiplier(50);
 
       camp.el.remove();
@@ -1384,11 +1385,13 @@ function enterBlackHoleLogic() {
   bhReturnX = camX;
   bhReturnY = camY;
 
-  bhTargetMultiplier = Math.min(15, targetPayout / Math.max(earnings, 1));
+  bhTargetMultiplier = Math.random() * 15 + 1; // Random multiplier between 1 and 16
   bhCurrentMultiplier = 1;
   bhRiseHeight = 0;
 
   fallScorePaused = true;
+
+  originalEarnings = earnings; // Store original earnings before multiplier
 
   camX = VOID_ZONE_X;
   camY = VOID_START_Y;
@@ -1405,7 +1408,7 @@ function enterBlackHoleLogic() {
   (SCREEN_W - VOID_BG_WIDTH) / 2 + "px";
 
   bhMovingBgEl.style.top = VOID_ZONE_Y + "px";
-  bhMovingBgEl.style.backgroundImage = "url('items/Void_bg.png')";
+  bhMovingBgEl.style.backgroundImage = "url('items/Bonus_bg.png')";
   bhMovingBgEl.style.backgroundRepeat = "no-repeat";
   bhMovingBgEl.style.backgroundSize = VOID_BG_WIDTH + "px " + VOID_BG_HEIGHT + "px";
   bhMovingBgEl.style.backgroundPosition = "0 0";
@@ -1511,25 +1514,36 @@ if (inBlackHole) {
   const now = performance.now();
   const elapsed = now - bhStartTime;
 
-  camY -= BH_RISE_SPEED;
+  if (bhShowcaseStart === 0) {
+    camY -= BH_RISE_SPEED;
 
+    // Update void sprites
+    voidSprites.forEach(sprite => {
+      sprite.y += sprite.speed;
+      sprite.el.style.left = sprite.x + "px";
+      sprite.el.style.top = sprite.y + "px";
+    });
 
+    const riseHeight = VOID_START_Y - camY;
 
-  // Update void sprites
-  voidSprites.forEach(sprite => {
-    sprite.y += sprite.speed;
-    sprite.el.style.left = sprite.x + "px";
-    sprite.el.style.top = sprite.y + "px";
-  });
+    bhCurrentMultiplier = Math.min(16, 1 + (riseHeight / 120)); // Increase based on rise height, reaching ~16x at 120 height
+    showMultiplier(bhCurrentMultiplier);
 
-  const riseHeight = VOID_START_Y - camY;
-
-  bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
-  showMultiplier(bhCurrentMultiplier);
-
-  if (bhCurrentMultiplier >= bhTargetMultiplier) {
-    earnings *= bhCurrentMultiplier;
-    exitBlackHole();
+    if (bhCurrentMultiplier >= bhTargetMultiplier) {
+      finalEarnings = earnings * bhCurrentMultiplier;
+      bhShowcaseStart = now;
+    }
+  } else {
+    // Showcase phase: display multiplier and animate score from original to multiplied for 3 seconds
+    const showcaseElapsed = now - bhShowcaseStart;
+    const progress = Math.min(showcaseElapsed / 3000, 1);
+    showcaseScore = originalEarnings + (finalEarnings - originalEarnings) * progress;
+    showMultiplier(bhCurrentMultiplier);
+    if (showcaseElapsed >= 3000) {
+      earnings = finalEarnings;
+      exitBlackHole();
+      bhShowcaseStart = 0;
+    }
   }
 
   showScore();
@@ -1620,10 +1634,6 @@ if (inBlackHole) {
     const fallDistance = camY - lastCamY;
     if (fallDistance > 2)
       earnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
-    earnings = Math.min(earnings, targetPayout);
-    if (earnings >= targetPayout && !payoutReached) {
-      payoutReached = true;
-    }
   }
 
   function checkPickup(arr) {
@@ -1687,11 +1697,21 @@ if (inBlackHole) {
 }
 
 function render() {
-  if (inBlackHole) {
+  if (inBlackHole && bhShowcaseStart === 0) {
     scoreEl.style.display = "none";
+    multiplierEl.classList.remove("showcase");
+    scoreEl.classList.remove("showcase");
   } else {
     scoreEl.style.display = "block";
-    scoreEl.textContent = `₹${earnings.toFixed(2)}`;
+    const displayScore = (inBlackHole && bhShowcaseStart > 0) ? showcaseScore : earnings;
+    scoreEl.textContent = `₹${displayScore.toFixed(2)}`;
+    if (inBlackHole && bhShowcaseStart > 0) {
+      multiplierEl.classList.add("showcase");
+      scoreEl.classList.add("showcase");
+    } else {
+      multiplierEl.classList.remove("showcase");
+      scoreEl.classList.remove("showcase");
+    }
   }
   world.style.transform = `translate(${-camX}px, ${-camY}px)`;
   silverjetWrap.style.left = PLAYER_X + "px";
@@ -1712,7 +1732,7 @@ function render() {
     p.el.style.top = p.y + "px";
   });
 
-  drawDebugColliders();
+  
 }
 
 update();
