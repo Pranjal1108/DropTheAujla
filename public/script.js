@@ -24,6 +24,10 @@ const ground = document.getElementById("ground");
 
 let balance = 1000;
 let betAmount = 10;
+let bonusMode = false;
+
+let targetPayout = 0;
+let outcomeType = null;
 
 const SCREEN_W = 1920;
 const SCREEN_H = 1200;
@@ -91,14 +95,14 @@ let bhMovingBgEl = null;
 let bhRiseHeight = 0;
 let bhBgOffsetY = 0;
 
-const bonusSprites = [];
+const voidSprites = [];
 
-const BONUS_BG_WIDTH = 2220;
-const BONUS_BG_HEIGHT = 6920;
+const VOID_BG_WIDTH = 2220;
+const VOID_BG_HEIGHT = 6920;
 
-const BONUS_ZONE_X = 0;
-const BONUS_ZONE_Y = -BONUS_BG_HEIGHT - 1000;
-const BONUS_START_Y = BONUS_ZONE_Y + BONUS_BG_HEIGHT - 1200;
+const VOID_ZONE_X = 0;
+const VOID_ZONE_Y = -VOID_BG_HEIGHT - 1000;
+const VOID_START_Y = VOID_ZONE_Y + VOID_BG_HEIGHT - 1200;
 
 const BH_RISE_SPEED = 7;
 
@@ -110,6 +114,7 @@ let fallScorePaused = false;
 let lastCamY = 0;
 let lastUpdateTime = performance.now();
 let landedTime = 0;
+let payoutReached = false;
 
 
 const multiplierEl = document.getElementById("multiplier");
@@ -184,8 +189,10 @@ document.querySelectorAll(".chip").forEach(c => {
 
 betBtn.onclick = () => {
   if (fallStarted || betPlaced) return;
-  if (betAmount > balance) return;
-  balance -= betAmount;
+  const effectiveBet = bonusMode ? betAmount * 10 : betAmount;
+  if (effectiveBet > balance) return;
+  balance -= effectiveBet;
+  decideOutcome(betAmount); // Use original betAmount for outcome calculation
   updateBalanceUI();
   camX = camY = velX = velY = angle = angVel = 0;
   earnings = 0;
@@ -193,11 +200,49 @@ betBtn.onclick = () => {
   fallStarted = true;
   betPlaced = true;
   betResolved = false;
+  payoutReached = false;
   lockBetUI();
 };
 
+function decideOutcome(bet) {
+  const r = Math.random();
+
+  if (r < 0.60) {
+    outcomeType = "lose";
+    targetPayout = bet * 0;
+  } else if (r < 0.85) {
+    outcomeType = "small";
+    targetPayout = bet * (1.2 + Math.random() * 0.6);
+  } else if (r < 0.97) {
+    outcomeType = "medium";
+    targetPayout = bet * (3 + Math.random() * 2);
+  } else if (r < 0.995) {
+    outcomeType = "big";
+    targetPayout = bet * (10 + Math.random() * 10);
+  } else {
+    outcomeType = "insane";
+    targetPayout = bet * (40 + Math.random() * 30);
+  }
+}
+
 
 updateBalanceUI();
+
+const bonusToggle = document.getElementById("bonusToggle");
+bonusToggle.onclick = () => {
+  if (fallStarted) return;
+  bonusMode = !bonusMode;
+  bonusToggle.classList.toggle("active");
+  // Remove white clouds if bonus mode is on
+  if (bonusMode) {
+    clouds.forEach(c => c.el.remove());
+    clouds.length = 0;
+  } else {
+    // Respawn clouds if turning off bonus mode
+    for (let i = 0; i < cloudquantity; i++) spawnCloud(randX(), spawnY());
+  }
+  updateBalanceUI();
+};
 
 const runOverEl = document.getElementById("runOver");
 
@@ -238,6 +283,8 @@ function clearWorld() {
   darkClouds.length = 0;
   blackHoles.forEach(bh => bh.el.remove());
   blackHoles.length = 0;
+  pushables.forEach(p => p.el.remove());
+  pushables.length = 0;
 }
 
 const collectibles = [];
@@ -247,6 +294,8 @@ const blackHoles = [];
 const blackholequantity = 100;
 let tank = null;
 let camp = null;
+const pushables = [];
+const pushablequantity = 100;
 
 
 const silverjetWrap = document.createElement("div");
@@ -267,7 +316,9 @@ function spawnCollectibles(count = PRESET_SPAWN_COUNT) {
   const TOP_SAFE = DEADZONE;
   const BOTTOM_SAFE_START = GROUND_Y - DEADZONE;
 
-  for (let i = 0; i < count; i++) {
+  const actualCount = bonusMode ? count * 2 : count; // Increase satellites in bonus mode
+
+  for (let i = 0; i < actualCount; i++) {
     const type = Math.random();
     const el = document.createElement("div");
     let value = 0, arr;
@@ -368,6 +419,33 @@ function spawnCamp() {
 
   world.appendChild(el);
   camp = { x, y, el };
+}
+
+// ========= PUSHABLES =========
+
+function spawnPushables(count = pushablequantity) {
+  pushables.forEach(p => p.el.remove());
+  pushables.length = 0;
+
+  const TOP_SAFE = DEADZONE;
+  const BOTTOM_SAFE = GROUND_Y - DEADZONE - 80;
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "pushable";
+    el.style.width = "550px";
+    el.style.height = "550px";
+    el.style.background = "url('items/pushable.png') no-repeat center/contain";
+
+    const x = randX();
+    const y = TOP_SAFE + Math.random() * (BOTTOM_SAFE - TOP_SAFE);
+
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    world.appendChild(el);
+    pushables.push({ x, y, el, velX: 0, velY: 0 });
+  }
 }
 
 
@@ -588,11 +666,14 @@ function spawnDarkCloud(x, y) {
 }
 
 function spawnWorld() {
-  for (let i = 0; i < cloudquantity; i++) spawnCloud(randX(), spawnY());
+  if (!bonusMode) {
+    for (let i = 0; i < cloudquantity; i++) spawnCloud(randX(), spawnY());
+  }
   for (let i = 0; i < darkcloudquantity; i++) spawnDarkCloud(randX(), spawnY());
   spawnBlackHoles(blackholequantity);
   spawnTank(20);
   spawnCamp(20);
+  spawnPushables(pushablequantity);
 }
 spawnWorld();
 spawnCollectibles(PRESET_SPAWN_COUNT);
@@ -699,6 +780,20 @@ function drawDebugColliders() {
     dctx.beginPath();
     dctx.arc(c.x - camX, c.y - camY, 2, 0, Math.PI * 2);
     dctx.fillStyle = "magenta";
+    dctx.fill();
+  });
+
+  // Draw pushable colliders
+  pushables.forEach(p => {
+    dctx.beginPath();
+    dctx.arc(p.x + 275 - camX, p.y + 275 - camY, 150, 0, Math.PI * 2);
+    dctx.strokeStyle = "rgba(0,255,255,0.9)"; // Cyan for pushables
+    dctx.lineWidth = 2;
+    dctx.stroke();
+
+    dctx.beginPath();
+    dctx.arc(p.x + 275 - camX, p.y + 275 - camY, 2, 0, Math.PI * 2);
+    dctx.fillStyle = "cyan";
     dctx.fill();
   });
 }
@@ -993,7 +1088,7 @@ function resolveCollisions() {
     const dy = p.y - nearestY;
 
     if (dx * dx + dy * dy < p.r * p.r) {
-      earnings *= 5;              //  MULTIPLIER
+      earnings = Math.min(earnings * 5, targetPayout);              //  MULTIPLIER
       showMultiplier(5);
 
       tank.el.remove();
@@ -1015,7 +1110,7 @@ function resolveCollisions() {
     const dy = p.y - nearestY;
 
     if (dx * dx + dy * dy < p.r * p.r) {
-      earnings *= 50;              // MULTIPLIER
+      earnings = Math.min(earnings * 50, targetPayout);              // MULTIPLIER
       showMultiplier(50);
 
       camp.el.remove();
@@ -1056,6 +1151,75 @@ function resolveCollisions() {
       velY = 0;
       angVel *= 0.6;
       onGround = true;
+    }
+  }
+
+  // Handle pushable collisions
+  for (const p of pushables) {
+    const px = p.x + 275;
+    const py = p.y + 275;
+    const pr = 150;
+
+    const contacts = [];
+
+    for (const pc of PLAYER_COLLIDERS) {
+      const dx = pc.x - px;
+      const dy = pc.y - py;
+      const distSq = dx * dx + dy * dy;
+      const minDist = pc.r + pr;
+      if (distSq >= minDist * minDist) continue;
+
+      const dist = Math.sqrt(distSq) || 0.00001;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const penetration = minDist - dist;
+
+      contacts.push({
+        nx,
+        ny,
+        penetration,
+        px: pc.x,
+        py: pc.y
+      });
+    }
+
+    if (contacts.length > 0) {
+      let nx = 0, ny = 0, depth = 0;
+
+      for (const c of contacts) {
+        nx += c.nx;
+        ny += c.ny;
+        depth += c.penetration;
+      }
+
+      nx /= contacts.length;
+      ny /= contacts.length;
+      depth /= contacts.length;
+
+      const len = Math.hypot(nx, ny) || 0.00001;
+      nx /= len;
+      ny /= len;
+
+      // Apply force to pushable for momentum in player's movement direction
+      const pushForce = 2.0; // Even stronger push for sliding effect
+      p.velX += velX * pushForce;
+      p.velY += velY * pushForce;
+
+      // No slowdown for player to allow free sliding
+      // velX *= 1.0;
+      // velY *= 1.0;
+
+      // Separation to make pushables solid
+      const k_slop = 1.5;
+      const percent = 0.45;
+      const corr = Math.max(depth - k_slop, 0) * percent;
+      const MAX_CORR = 8;
+      const finalCorr = Math.min(corr, MAX_CORR);
+
+      camX += nx * finalCorr;
+      camY += ny * finalCorr;
+      p.x -= nx * finalCorr;
+      p.y -= ny * finalCorr;
     }
   }
 
@@ -1161,14 +1325,14 @@ function enterBlackHoleLogic() {
   bhReturnX = camX;
   bhReturnY = camY;
 
-  bhTargetMultiplier = 2 + Math.random() * 13;
+  bhTargetMultiplier = Math.min(15, targetPayout / Math.max(earnings, 1));
   bhCurrentMultiplier = 1;
   bhRiseHeight = 0;
 
   fallScorePaused = true;
 
-  camX = BONUS_ZONE_X;
-  camY = BONUS_START_Y;
+  camX = VOID_ZONE_X;
+  camY = VOID_START_Y;
 
   velX = 0;
   velY = 0;
@@ -1176,21 +1340,21 @@ function enterBlackHoleLogic() {
 
   bhMovingBgEl = document.createElement("div");
   bhMovingBgEl.style.position = "absolute";
-  bhMovingBgEl.style.width = BONUS_BG_WIDTH + "px";
-  bhMovingBgEl.style.height = BONUS_BG_HEIGHT + "px";
+  bhMovingBgEl.style.width = VOID_BG_WIDTH + "px";
+  bhMovingBgEl.style.height = VOID_BG_HEIGHT + "px";
   bhMovingBgEl.style.left =
-  (SCREEN_W - BONUS_BG_WIDTH) / 2 + "px";
+  (SCREEN_W - VOID_BG_WIDTH) / 2 + "px";
 
-  bhMovingBgEl.style.top = BONUS_ZONE_Y + "px";
-  bhMovingBgEl.style.backgroundImage = "url('items/Bonus_bg.png')";
+  bhMovingBgEl.style.top = VOID_ZONE_Y + "px";
+  bhMovingBgEl.style.backgroundImage = "url('items/Void_bg.png')";
   bhMovingBgEl.style.backgroundRepeat = "no-repeat";
-  bhMovingBgEl.style.backgroundSize = BONUS_BG_WIDTH + "px " + BONUS_BG_HEIGHT + "px";
+  bhMovingBgEl.style.backgroundSize = VOID_BG_WIDTH + "px " + VOID_BG_HEIGHT + "px";
   bhMovingBgEl.style.backgroundPosition = "0 0";
   bhMovingBgEl.style.zIndex = "11";
 
   world.appendChild(bhMovingBgEl);
 
-  // Swap sprite to jetpack in bonus zone
+  // Swap sprite to jetpack in void zone
   originalSpriteBg = sprite.style.backgroundImage;
   sprite.style.backgroundImage = "url('items/jetpack.png')";
 
@@ -1212,9 +1376,9 @@ function exitBlackHole() {
   velY = 0;
   angVel = 0;
 
-  // Clear bonus sprites
-  bonusSprites.forEach(sprite => sprite.el.remove());
-  bonusSprites.length = 0;
+  // Clear void sprites
+  voidSprites.forEach(sprite => sprite.el.remove());
+  voidSprites.length = 0;
 
   // Restore original sprite
   sprite.style.backgroundImage = originalSpriteBg;
@@ -1292,14 +1456,14 @@ if (inBlackHole) {
 
 
 
-  // Update bonus sprites
-  bonusSprites.forEach(sprite => {
+  // Update void sprites
+  voidSprites.forEach(sprite => {
     sprite.y += sprite.speed;
     sprite.el.style.left = sprite.x + "px";
     sprite.el.style.top = sprite.y + "px";
   });
 
-  const riseHeight = BONUS_START_Y - camY;
+  const riseHeight = VOID_START_Y - camY;
 
   bhCurrentMultiplier = Math.min(15, 1 + (riseHeight / 120)) ; // Increase based on rise height, reaching ~15x at 120 height
   showMultiplier(bhCurrentMultiplier);
@@ -1371,6 +1535,14 @@ if (inBlackHole) {
   camX += velX;
   camY += velY;
 
+  // Update pushable positions
+  for (const p of pushables) {
+    p.x += p.velX;
+    p.y += p.velY;
+    p.velX *= 0.95; // Apply friction
+    p.velY *= 0.95;
+  }
+
   velX *= onGround ? GROUND_FRICTION : AIR_FRICTION;
   angVel *= onGround ? 0.35 : 0.989;
 
@@ -1380,6 +1552,10 @@ if (inBlackHole) {
     const fallDistance = camY - lastCamY;
     if (fallDistance > 2)
       earnings += fallDistance * Math.sqrt(betAmount) * 0.00015;
+    earnings = Math.min(earnings, targetPayout);
+    if (earnings >= targetPayout && !payoutReached) {
+      payoutReached = true;
+    }
   }
 
   function checkPickup(arr) {
@@ -1416,7 +1592,7 @@ if (inBlackHole) {
   if (onGround && fallStarted && !betResolved) {
     if (landedTime === 0) {
       landedTime = performance.now();
-    } else if (performance.now() - landedTime > 1000) { // Wait 1 second on ground
+    } else if (performance.now() - landedTime > 1000) {
       betResolved = true;
       const payout = earnings;
       balance += payout;
@@ -1461,6 +1637,14 @@ function render() {
   skeleton.style.left = (camX + PLAYER_X) + 'px';
   skeleton.style.top = (camY + PLAYER_Y) + 'px';
   skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-  
+
+  // Update pushable sprite positions
+  pushables.forEach(p => {
+    p.el.style.left = p.x + "px";
+    p.el.style.top = p.y + "px";
+  });
+
+  drawDebugColliders();
 }
-update(); 
+
+update();

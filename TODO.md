@@ -1,5 +1,0 @@
-- [x] Add Mars sprite: big (70% screen), centered, moves downwards slowly in bonus zone
-- [x] Add smaller planet sprites (earthlike, planet1, planet2): move downwards faster, in front of Mars
-- [x] Update sprite positions in update loop when inBlackHole
-- [x] Remove sprites on exitBlackHole
-- [x] Clarify collectibles as pickup triggers only (no physical collision)
