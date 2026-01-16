@@ -1201,14 +1201,14 @@ function resolveCollisions() {
       nx /= len;
       ny /= len;
 
-      // Apply force to pushable in the direction of the collision normal (away from player)
-      const pushForce = 2.0; // Even stronger push for sliding effect
-      p.velX += -nx * pushForce;
-      p.velY += -ny * pushForce;
+      // Apply force to pushable with reduced movement to simulate mass
+      const pushForce = 4.0;
+      p.velX += -nx * pushForce * 0.5;
+      p.velY += -ny * pushForce * 0.5;
 
-      // No slowdown for player to allow free sliding
-      // velX *= 1.0;
-      // velY *= 1.0;
+      // Apply stronger reaction force to player in opposite direction for resistance feel
+      velX += nx * pushForce * 0.8;
+      velY += ny * pushForce * 0.8;
 
       // Separation to make pushables solid
       const k_slop = 1.5;
