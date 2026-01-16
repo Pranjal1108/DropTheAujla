@@ -1,3 +1,29 @@
+// === INTRO LOGIC ===
+let introFinished = false;
+const introVideo = document.getElementById("introVideo");
+const pressAnyKey = document.getElementById("pressAnyKey");
+
+function startIntro() {
+  introVideo.style.display = "block";
+  introVideo.play();
+}
+
+function onVideoEnd() {
+  introVideo.style.display = "none";
+  pressAnyKey.style.display = "block";
+  document.addEventListener("keydown", onKeyPress);
+}
+
+function onKeyPress() {
+  pressAnyKey.style.display = "none";
+  document.removeEventListener("keydown", onKeyPress);
+  introFinished = true;
+  update(); // Start the game loop
+}
+
+introVideo.addEventListener("ended", onVideoEnd);
+startIntro();
+
 // === PERFORMANCE CONSTANTS ===
 const REUSE_DISTANCE = 1500;
 const CLOUD_RESPAWN_AHEAD = 5000;
@@ -1500,6 +1526,7 @@ function exitBlackHole() {
 
 
 function update() {
+  if (!introFinished) return;
 
 if (bhAnimating) {
   const now = performance.now();
@@ -1770,6 +1797,7 @@ function render() {
   });
 
   
+  
 }
 
-update();
+// Initial update() call removed; intro logic handles starting the game loop
