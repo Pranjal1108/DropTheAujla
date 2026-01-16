@@ -689,7 +689,7 @@ function spawnWorld() {
   spawnBlackHoles(blackholequantity);
   spawnTank(20);
   spawnCamp(20);
-  const pushableQty = bonusMode ? 200 : 20;
+  const pushableQty = bonusMode ? 2000 : 20;
   spawnPushables(pushableQty);
 }
 spawnWorld();
@@ -919,6 +919,33 @@ function recycleBlackHoles() {
 
     bh.el.style.left = bh.x + "px";
     bh.el.style.top = bh.y + "px";
+  }
+}
+
+function recyclePushables() {
+  const MAX_H = 550; // Pushable height
+
+  const TOP_LIMIT = DEADZONE;
+  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_H;
+
+  for (let p of pushables) {
+
+    if (p.y < TOP_LIMIT - REUSE_DISTANCE) {
+      p.y = BOTTOM_LIMIT - Math.random() * 1200;
+      p.x = randX();
+      p.velX = 0;
+      p.velY = 0;
+    }
+
+    else if (p.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
+      p.y = TOP_LIMIT + Math.random() * 1200;
+      p.x = randX();
+      p.velX = 0;
+      p.velY = 0;
+    }
+
+    p.el.style.left = p.x + "px";
+    p.el.style.top = p.y + "px";
   }
 }
 
@@ -1176,6 +1203,15 @@ function resolveCollisions() {
     const px = p.x + 275;
     const py = p.y + 275;
     const pr = 150;
+
+    // Optimization: Skip pushables that are too far from the player
+    const playerX = camX + PLAYER_X;
+    const playerY = camY + PLAYER_Y;
+    const dxToPlayer = px - playerX;
+    const dyToPlayer = py - playerY;
+    const distToPlayerSq = dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer;
+    const maxDist = 1000; // Only check pushables within 1000 pixels
+    if (distToPlayerSq > maxDist * maxDist) continue;
 
     const contacts = [];
 
@@ -1534,12 +1570,12 @@ if (inBlackHole) {
       bhShowcaseStart = now;
     }
   } else {
-    // Showcase phase: display multiplier and animate score from original to multiplied for 3 seconds
+    // Showcase phase: display multiplier and animate score from original to multiplied for 1 second
     const showcaseElapsed = now - bhShowcaseStart;
-    const progress = Math.min(showcaseElapsed / 3000, 1);
+    const progress = Math.min(showcaseElapsed / 1000, 1);
     showcaseScore = originalEarnings + (finalEarnings - originalEarnings) * progress;
     showMultiplier(bhCurrentMultiplier);
-    if (showcaseElapsed >= 3000) {
+    if (showcaseElapsed >= 1000) {
       earnings = finalEarnings;
       exitBlackHole();
       bhShowcaseStart = 0;
@@ -1585,6 +1621,7 @@ if (inBlackHole) {
   recycleClouds();
   recycleDarkClouds();
   recycleBlackHoles();
+  recyclePushables();
 
   // Update black hole rotations if player is within 2000x2000 pixel range
   for (let bh of blackHoles) {
