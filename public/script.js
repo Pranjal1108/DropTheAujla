@@ -151,8 +151,8 @@ function unlockBetUI() {
 
 function updateBalanceUI() {
   balanceEl.textContent = `Balance ₹${balance.toFixed(2)}`;
-  betInput.value = betAmount.toFixed(2);
-  betBtn.disabled = betAmount > balance || betAmount <= 0 || fallStarted;
+  betInput.value = (bonusMode ? betAmount * 10 : betAmount).toFixed(2);
+  betBtn.disabled = (bonusMode ? betAmount * 10 : betAmount) > balance || betAmount <= 0 || fallStarted;
 }
 
 plusBtn.onclick = () => {
@@ -205,7 +205,8 @@ betBtn.onclick = () => {
 };
 
 function decideOutcome(bet) {
-  const r = Math.random();
+  let r = Math.random();
+  if (bonusMode && r < 0.6) r = 0.6;
 
   if (r < 0.60) {
     outcomeType = "lose";

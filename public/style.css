@@ -891,8 +891,8 @@ body {
     inset 0 0 45px rgba(255,255,255,0.7);
 }
 .bonus-toggle.active {
-  background: rgba(255,0,0,0.8);
-  border-color: rgba(255,0,0,1);
+  background: rgba(68, 255, 0, 0.8);
+  border-color: rgb(9, 255, 0);
   color: white;
 }
 .bonus-toggle:active { transform: scale(.94); }
