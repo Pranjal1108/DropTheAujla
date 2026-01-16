@@ -673,7 +673,8 @@ function spawnWorld() {
   spawnBlackHoles(blackholequantity);
   spawnTank(20);
   spawnCamp(20);
-  spawnPushables(pushablequantity);
+  const pushableQty = bonusMode ? 1000 : 350;
+  spawnPushables(pushableQty);
 }
 spawnWorld();
 spawnCollectibles(PRESET_SPAWN_COUNT);
@@ -1200,10 +1201,10 @@ function resolveCollisions() {
       nx /= len;
       ny /= len;
 
-      // Apply force to pushable for momentum in player's movement direction
+      // Apply force to pushable in the direction of the collision normal (away from player)
       const pushForce = 2.0; // Even stronger push for sliding effect
-      p.velX += velX * pushForce;
-      p.velY += velY * pushForce;
+      p.velX += -nx * pushForce;
+      p.velY += -ny * pushForce;
 
       // No slowdown for player to allow free sliding
       // velX *= 1.0;
