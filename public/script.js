@@ -35,12 +35,15 @@ const SCREEN_H = 1200;
 const WORLDH = 20000;
 world.style.height = WORLDH + "px";
 
-const GROUND_HEIGHT = 500;
-const GROUND_Y = WORLDH - GROUND_HEIGHT;
+const GROUND_HEIGHT = 700;
+const GROUND_Y = WORLDH - GROUND_HEIGHT ;
 const DEADZONE = 1500;
 
-ground.style.height = GROUND_HEIGHT + 900 + "px";
-ground.style.top = GROUND_Y - 600 + "px";
+ground.style.height = (GROUND_HEIGHT * 1.3) + "px";
+ground.style.top = 18800 + "px";
+ground.style.width = "16400px";
+ground.style.backgroundSize = "8200px 130%";
+
 
 const cloudquantity = 500;
 const darkcloudquantity = 40;
@@ -58,6 +61,8 @@ const PLAYER_Y = SCREEN_H / 2;
 let camX = 0, camY = 0;
 let velX = 0, velY = 0;
 let angle = 0, angVel = 0;
+let prevAngle = 0;
+let angleAccumulator = 0;
 
 let fallStarted = false;
 let betPlaced = false;
@@ -118,6 +123,7 @@ let payoutReached = false;
 
 
 const multiplierEl = document.getElementById("multiplier");
+const flipTextEl = document.getElementById("flipText");
 
 function showScore() {
   scoreEl.style.display = "block";
@@ -131,6 +137,14 @@ function showMultiplier(m) {
 
 function hideMultiplier() {
   multiplierEl.style.display = "none";
+}
+
+function showFlipText(text) {
+  flipTextEl.textContent = text;
+  flipTextEl.style.display = "block";
+  setTimeout(() => {
+    flipTextEl.style.display = "none";
+  }, 500);
 }
 
 function lockBetUI() {
@@ -392,7 +406,7 @@ function spawnTank() {
   el.style.background = `url('items/tank.png') no-repeat center/contain`;
 
   const x = randX();
-  const y = GROUND_Y - 375;
+  const y = parseInt(ground.style.top) ;
 
   el.style.left = x + "px";
   el.style.top = y + "px";
@@ -413,7 +427,7 @@ function spawnCamp() {
   el.style.background = `url('items/camp.png') no-repeat center/contain`;
 
   const x = randX();
-  const y = GROUND_Y - 600;
+  const y = parseInt(ground.style.top);
 
   el.style.left = x + "px";
   el.style.top = y + "px";
@@ -503,9 +517,9 @@ function createAnimatedCloud(layer, count, speedMin, speedMax, yMin, yMax, sizeS
   }
 }
 
-createAnimatedCloud(".back", 12, 200, 650, 0, 650, 0.8);
-createAnimatedCloud(".mid", 8, 450, 800, 0, 750, 0.9);
-createAnimatedCloud(".front", 6, 700, 1300, 0, 1000, 1.3);
+createAnimatedCloud(".back", 12, 200, 450, 0, 850, 0.8);
+createAnimatedCloud(".mid", 8, 450, 600, 0, 1050, 0.9);
+createAnimatedCloud(".front", 6, 700, 1000, 0, 1200, 1.3);
 
 function animateAnimatedClouds(now) {
   const dt = (now - animated_clouds_lastTime) / 1000;
@@ -674,7 +688,7 @@ function spawnWorld() {
   spawnBlackHoles(blackholequantity);
   spawnTank(20);
   spawnCamp(20);
-  const pushableQty = bonusMode ? 1000 : 350;
+  const pushableQty = bonusMode ? 200 : 20;
   spawnPushables(pushableQty);
 }
 spawnWorld();
@@ -806,10 +820,10 @@ const MASS = 2.0;
 
 function restitutionFromSpeed(v) {
   const s = Math.min(Math.abs(v), 40);
-  if (s < 2) return 0.1;
-  if (s < 8) return 0.3;
-  if (s < 14) return 0.5;
-  if (s < 22) return 0.6;
+  if (s < 1) return 0;
+  if (s < 8) return 0.1;
+  if (s < 14) return 0.3;
+  if (s < 22) return 0.5;
   if (s < 30) return 0.6;
   return 0.5;
 }
@@ -1202,8 +1216,51 @@ function resolveCollisions() {
       nx /= len;
       ny /= len;
 
+      const ref = contacts[0];
+      const px = ref.px;
+      const py = ref.py;
+
+      const rx = px - bodyCX;
+      const ry = py - bodyCY;
+
+      const relVX = velX - (-angVel * ry);
+      const relVY = velY + (angVel * rx);
+
+      const relNormal = relVX * nx + relVY * ny;
+
+      if (relNormal < 0) {
+        const speed = Math.hypot(relVX, relVY);
+        const e = restitutionFromSpeed(speed);
+
+        const rCrossN = rx * ny - ry * nx;
+        const denom = (1 / MASS) + (rCrossN * rCrossN) / I;
+
+        const j = -(1 + e) * relNormal / denom;
+
+        velX += (j * nx) / MASS;
+        velY += (j * ny) / MASS;
+        angVel += (rCrossN * j) / I;
+
+        const vtX = relVX - relNormal * nx;
+        const vtY = relVY - relNormal * ny;
+        const vt = Math.hypot(vtX, vtY);
+
+        if (vt > 0.0001) {
+          const tx = vtX / vt;
+          const ty = vtY / vt;
+
+          let jt = -vt / denom;
+          const maxFriction = muKinetic * Math.abs(j);
+          jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
+
+          velX += (jt * tx) / MASS;
+          velY += (jt * ty) / MASS;
+          angVel += (rCrossN * jt) / I;
+        }
+      }
+
       // Apply force to pushable with reduced movement to simulate mass
-      const pushForce = 4.0;
+      const pushForce = 2.0;
       p.velX += -nx * pushForce * 0.5;
       p.velY += -ny * pushForce * 0.5;
 
@@ -1549,6 +1606,15 @@ if (inBlackHole) {
   angVel *= onGround ? 0.35 : 0.989;
 
   angle += angVel;
+
+  // Detect flips
+  const angleChange = angVel;
+  angleAccumulator += angleChange;
+  if (Math.abs(angleAccumulator) >= 2 * Math.PI) {
+    const flipType = angleAccumulator > 0 ? "backflip" : "frontflip";
+    showFlipText(flipType);
+    angleAccumulator = 0;
+  }
 
   if (betPlaced && fallStarted && velY > 0 && !fallScorePaused) {
     const fallDistance = camY - lastCamY;

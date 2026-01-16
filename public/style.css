@@ -23,7 +23,7 @@ body {
 }
 
 #game {
-  width: 1920px;
+  width: 8200px;
   height: 1151px;
   position: relative;
   overflow: visible;
@@ -237,6 +237,27 @@ body {
   display: none;
 }
 
+#flipText {
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 200px);
+  transform: translateX(-50%);
+  font-size: 36px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255,255,255,0.8);
+  z-index: 999999;
+  pointer-events: none;
+  display: none;
+  animation: flash 0.5s ease-in-out;
+}
+
+@keyframes flash {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 #sky{
   width:100vw;
   height:100vh;
@@ -300,9 +321,9 @@ body {
   left: 50%;
   transform: translateX(-50%);
 
-  background: url("items/ground.png") repeat-x;
-  background-repeat: repeat-x;
-  background-size: auto 100%;  
+  background: url("items/ground.png?v=1") repeat-x;
+  background-size: 8210px 205px;
+  background-position: 0 100%;
 
   pointer-events: none;
   z-index: 999;
@@ -311,6 +332,7 @@ body {
 
 .tank {
   position: absolute;
+  bottom: 0;
   width: 500px;
   height: 375px;
 
@@ -704,13 +726,13 @@ body {
 
 #ground {
   position: absolute;
-  width: 200000px;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
 
   background: url("items/ground.png") repeat-x;
   background-repeat: repeat-x;
-  background-size: auto 100%;  
+  background-size: auto 140%;
 
   pointer-events: none;
   z-index: 999;
