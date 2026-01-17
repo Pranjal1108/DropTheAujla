@@ -98,6 +98,17 @@ const MAX_FALL = 30;
 const AIR_FRICTION = 0.95;
 const GROUND_FRICTION = 0.2;
 
+const TANK_COUNT = 8;
+const CAMP_COUNT = 5;
+
+const VISIBILITY_BUFFER = 2200; // distance between 2
+
+const tanks = [];
+const camps = [];
+
+let activeTankIndex = 0;
+let activeCampIndex = 0;
+
 
 let inBlackHole = false;
 let bhReturnX = 0;
@@ -423,45 +434,91 @@ function spawnBlackHoles(count = blackholequantity) {
 
 // ========= TANKS =========
 
-function spawnTank() {
-  if (tank) return;
+function spawnTanks(count = TANK_COUNT) {
+  tanks.forEach(t => t.el.remove());
+  tanks.length = 0;
 
-  const el = document.createElement("div");
-  el.className = "tank";
-  el.style.width = "500px";
-  el.style.height = "375px";
-  el.style.background = `url('items/tank.png') no-repeat center/contain`;
+  const groundY = parseInt(ground.style.top);
 
-  const x = randX();
-  const y = parseInt(ground.style.top) ;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "tank";
+    el.style.width = "500px";
+    el.style.height = "375px";
+    el.style.background = "url('items/tank.png') no-repeat center/contain";
+    el.style.display = "none";
 
-  el.style.left = x + "px";
-  el.style.top = y + "px";
+    const x = randX();
+    const y = groundY;
 
-  world.appendChild(el);
-  tank = { x, y, el };
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    world.appendChild(el);
+    tanks.push({ x, y, el, active: false });
+  }
 }
+
 
 // ========= MILITARY CAMP =========
 
-function spawnCamp() {
-  if (camp) return;
+function spawnCamps(count = CAMP_COUNT) {
+  camps.forEach(c => c.el.remove());
+  camps.length = 0;
 
-  const el = document.createElement("div");
-  el.className = "military-camp";
-  el.style.width = "800px";
-  el.style.height = "600px";
-  el.style.background = `url('items/camp.png') no-repeat center/contain`;
+  const groundY = parseInt(ground.style.top);
 
-  const x = randX();
-  const y = parseInt(ground.style.top);
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "military-camp";
+    el.style.width = "800px";
+    el.style.height = "600px";
+    el.style.background = "url('items/camp.png') no-repeat center/contain";
+    el.style.display = "none";
 
-  el.style.left = x + "px";
-  el.style.top = y + "px";
+    const x = randX();
+    const y = groundY;
 
-  world.appendChild(el);
-  camp = { x, y, el };
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+
+    world.appendChild(el);
+    camps.push({ x, y, el, active: false });
+  }
 }
+
+
+function updateGroundEntitiesVisibility() {
+  const camBottom = camY + SCREEN_H;
+  const camTop = camY;
+
+  // ---- TANK ----
+  tanks.forEach(t => t.el.style.display = "none");
+
+  let t = tanks[activeTankIndex];
+  if (t) {
+    const dy = Math.abs(t.y - camBottom);
+    if (dy < VISIBILITY_BUFFER) {
+      t.el.style.display = "block";
+    } else {
+      activeTankIndex = (activeTankIndex + 1) % tanks.length;
+    }
+  }
+
+  // ---- CAMP ----
+  camps.forEach(c => c.el.style.display = "none");
+
+  let c = camps[activeCampIndex];
+  if (c) {
+    const dy = Math.abs(c.y - camBottom);
+    if (dy < VISIBILITY_BUFFER) {
+      c.el.style.display = "block";
+    } else {
+      activeCampIndex = (activeCampIndex + 1) % camps.length;
+    }
+  }
+}
+
 
 // ========= PUSHABLES =========
 
@@ -713,8 +770,9 @@ function spawnWorld() {
   }
   for (let i = 0; i < darkcloudquantity; i++) spawnDarkCloud(randX(), spawnY());
   spawnBlackHoles(blackholequantity);
-  spawnTank(20);
-  spawnCamp(20);
+  spawnTanks(TANK_COUNT);
+  spawnCamps(CAMP_COUNT);
+
   const pushableQty = bonusMode ? 2000 : 20;
   spawnPushables(pushableQty);
 }
@@ -1642,6 +1700,9 @@ if (inBlackHole) {
 
     render();
     requestAnimationFrame(update);
+
+    
+
     return;
   }
 
@@ -1757,6 +1818,7 @@ if (inBlackHole) {
   render();
   checkStuck();
   requestAnimationFrame(update);
+  updateGroundEntitiesVisibility();
 
 }
 
