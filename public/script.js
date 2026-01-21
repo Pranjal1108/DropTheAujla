@@ -1,103 +1,98 @@
-// === INTRO LOGIC ===
-let introFinished = false;
-const introVideo = document.getElementById("introVideo");
-const pressAnyKey = document.getElementById("pressAnyKey");
+// ===============================================================
+// DROP THE BOSS - Frontend Puppet
+// ===============================================================
 
-function startIntro() {
-  introVideo.style.display = "block";
-  introVideo.play();
-}
+import { createRNG } from './rng.js';
 
-function onVideoEnd() {
-  introVideo.style.display = "none";
-  pressAnyKey.style.display = "block";
-  document.addEventListener("keydown", onKeyPress);
-}
+// ===============================================================
+// CONSTANTS (MUST MATCH BACKEND EXACTLY)
+// ===============================================================
 
-function onKeyPress() {
-  pressAnyKey.style.display = "none";
-  document.removeEventListener("keydown", onKeyPress);
-  introFinished = true;
-  update(); // Start the game loop
-}
+const SCREEN_W = 1920;
+const SCREEN_H = 1200;
+const GROUND_Y = 19300;
+const GROUND_HEIGHT = 700;
 
-introVideo.addEventListener("ended", onVideoEnd);
-startIntro();
+const SPAWN_START_Y = 800;
+const SPAWN_END_Y = GROUND_Y - 1000;
 
-// === PERFORMANCE CONSTANTS ===
-const REUSE_DISTANCE = 1500;
-const CLOUD_RESPAWN_AHEAD = 5000;
+const PLAYER_W = 160;
+const PLAYER_H = 240;
+const PLAYER_X = SCREEN_W / 2;
+const PLAYER_Y = SCREEN_H / 2;
+
+// Physics - MUST MATCH BACKEND
+const GRAVITY = 0.55;
+const MAX_FALL = 28;
+const AIR_FRICTION = 0.995;
+const GROUND_FRICTION = 0.85;
+const PLAYER_RADIUS = 65;
+const GROUND_COLLISION_Y = 19280;
+
+// Cloud physics
+const CLOUD_RADIUS = 120;
+const CLOUD_BOUNCE = 0.65;
+const CLOUD_FRICTION = 0.85;
+
+const BH_SIZE = 300;
+const BH_RADIUS = 100;
+
+// ===============================================================
+// DOM ELEMENTS
+// ===============================================================
 
 const gameScale = document.getElementById("game-scale");
-function scaleGame() {
-  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1200);
-  gameScale.style.setProperty('--game-scale', scale);
-}
-window.addEventListener("resize", scaleGame);
-scaleGame();
-
 const world = document.getElementById("world");
-const player = document.getElementById("player");
+const sprite = document.getElementById("sprite");
+const skeleton = document.getElementById("skeleton");
+const ground = document.getElementById("ground");
 const scoreEl = document.getElementById("score");
-world.style.pointerEvents = "none";
+const multiplierEl = document.getElementById("multiplier");
+const flipTextEl = document.getElementById("flipText");
+const runOverEl = document.getElementById("runOver");
+const debugEl = document.getElementById("debug");
 
 const betInput = document.getElementById("betAmount");
 const betBtn = document.getElementById("placeBet");
 const plusBtn = document.getElementById("plus");
 const minusBtn = document.getElementById("minus");
-balanceEl = document.getElementById("balance");
-const ground = document.getElementById("ground");
+const balanceEl = document.getElementById("balance");
+const bonusToggle = document.getElementById("bonusToggle");
+
+// ===============================================================
+// CLOUD VISUAL DATA
+// ===============================================================
+
+const CLOUD1_W = 320 * 1.7;
+const CLOUD1_H = 160 * 1.7;
+const CLOUD2_W = 325 * 1.5;
+const CLOUD2_H = 217 * 1.5;
+
+const DARK_W = 280 * 1.5;
+const DARK_H = 187 * 1.5;
+const DARK_RECTS = [
+    { w: 0.19, h: 0.086, x: 0.418, y: 0.193 },
+    { w: 0.43, h: 0.118, x: 0.296, y: 0.278 },
+    { w: 0.77, h: 0.214, x: 0.125, y: 0.476 }
+];
+
+// ===============================================================
+// GAME STATE
+// ===============================================================
 
 let balance = 1000;
 let betAmount = 10;
 let bonusMode = false;
-
-
-
-const SCREEN_W = 1920;
-const SCREEN_H = 1200;
-
-const WORLDH = 20000;
-world.style.height = WORLDH + "px";
-
-const GROUND_HEIGHT = 700;
-const GROUND_Y = WORLDH - GROUND_HEIGHT ;
-const DEADZONE = 1500;
-
-ground.style.height = (GROUND_HEIGHT * 1.3) + "px";
-ground.style.top = 18800 + "px";
-ground.style.width = "16400px";
-ground.style.backgroundSize = "8200px 130%";
-
-
-const cloudquantity = 500;
-const darkcloudquantity = 40;
-const PRESET_SPAWN_COUNT = 600;
-
-const BH_RADIUS = 100;
-const BH_SIZE = 300;
-
-const PLAYER_W = 160;
-const PLAYER_H = 240;
-
-const PLAYER_X = SCREEN_W / 2;
-const PLAYER_Y = SCREEN_H / 2;
-
-let camX = 0, camY = 0;
-let velX = 0, velY = 0;
-let angle = 0, angVel = 0;
-let prevAngle = 0;
-let angleAccumulator = 0;
-
 let fallStarted = false;
 let betPlaced = false;
 let betResolved = false;
+let gameLoopRunning = false;
+let isPlacingBet = false;
 
-const GRAVITY = 0.55;
-const MAX_FALL = 30;
-const AIR_FRICTION = 0.95;
-const GROUND_FRICTION = 0.2;
+let currentSession = null;
+let currentScript = null;
 
+<<<<<<< HEAD
 const TANK_COUNT = 8;
 const CAMP_COUNT = 5;
 
@@ -109,19 +104,59 @@ const camps = [];
 let activeTankIndex = 0;
 let activeCampIndex = 0;
 
+=======
+// Physics state
+let camX = 0, camY = 0;
+let velX = 0, velY = 0;
+let angle = 0, angVel = 0;
+let angleAccumulator = 0;
+>>>>>>> 1b90251 (stuff)
 
+// Score
+let displayedScore = 0;
+let targetScore = 0;
+let scoreProgression = [];
+
+let landedTime = 0;
+
+// Object arrays
+const clouds = [];
+const darkClouds = [];
+const blackHoles = [];
+const collectibles = [];
+
+let tank = null;
+let camp = null;
+
+let visualRng = Math.random;
+
+// Death animation
+let isDying = false;
+let deathAnimStart = 0;
+let deathAnimType = 'implode';
+const DEATH_ANIM_DURATION = 1500;
+
+// Black hole state
 let inBlackHole = false;
-let bhReturnX = 0;
-let bhReturnY = 0;
-let bhExitX = 0;
-let bhExitY = 0;
+let bhAnimating = false;
+let bhAnimType = '';
+let bhAnimStartTime = 0;
+let bhAnimDuration = 1000;
+let bhAnimStartSize = 0;
+let bhAnimEndSize = 0;
+let bhAnimEl = null;
+let bhReturnX = 0, bhReturnY = 0;
 let bhTargetMultiplier = 0;
 let bhCurrentMultiplier = 1;
-let bhStartTime = 0;
-let originalSpriteBg = '';
+let bhShowcaseStart = 0;
+const VOID_START_Y = -10000;
+const BH_RISE_SPEED = 7;
+let finalEarnings = 0;
+let currentBH = null;
 let exitingAnimation = false;
 let exitAnimStart = 0;
 
+<<<<<<< HEAD
 let tankTouched = false;
 
 let bhAnimating = false;
@@ -733,34 +768,27 @@ const DARK_RECTS = [
   { w: 0.7714286, h: 0.2139037, x: 0.1250000, y: 0.4759358 }
 ];
 
+=======
+// Dark cloud state
+>>>>>>> 1b90251 (stuff)
 let grabbedByDarkCloud = false;
 let releaseTime = 0;
 let grabbedCloud = null;
 let freezeX = 0, freezeY = 0;
-
-const skeleton = document.getElementById("skeleton");
-const sprite = document.getElementById("sprite");
-sprite.style.backgroundImage = "url('items/game sprite green.png')";
 let skeletonFlashInterval = null;
 
-function spawnDarkCloud(x, y) {
-  if (y > GROUND_Y - 500) return;
-  const el = document.createElement("div");
-  el.className = "dark-cloud";
-  el.style.width = DARK_W + "px";
-  el.style.height = DARK_H + "px";
-  el.style.left = x + "px";
-  el.style.top = y + "px";
+// Stop detection
+let stopMethod = 'ground';
+let stopAtY = GROUND_Y;
+let gameStopped = false;
 
-  world.appendChild(el);
+const DEBUG = true;
 
-  const rects = DARK_RECTS.map(r => ({
-    x: x + r.x * DARK_W,
-    y: y + r.y * DARK_H,
-    w: r.w * DARK_W,
-    h: r.h * DARK_H
-  }));
+// ===============================================================
+// LOCAL PHYSICS (Self-contained - no imports needed)
+// ===============================================================
 
+<<<<<<< HEAD
   darkClouds.push({ x, y, el, rects });
 }
 
@@ -924,666 +952,846 @@ function recycleClouds() {
     if (c.y < TOP_LIMIT - REUSE_DISTANCE) {
       c.y = BOTTOM_LIMIT - Math.random() * 1200;
       c.x = randX();
+=======
+function applyPhysics(onGround) {
+    // Gravity
+    if (!onGround) {
+        velY = Math.min(velY + GRAVITY, MAX_FALL);
+>>>>>>> 1b90251 (stuff)
     }
-
-    else if (c.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
-      c.y = TOP_LIMIT + Math.random() * 1200;
-      c.x = randX();
-    }
-
-    c.el.style.left = c.x + "px";
-    c.el.style.top = c.y + "px";
-
-    const pick1 = c.el.style.background.includes("cloud4");
-    const base = pick1 ? CLOUD1 : CLOUD2;
-    const W = pick1 ? CLOUD1_W : CLOUD2_W;
-    const H = pick1 ? CLOUD1_H : CLOUD2_H;
-
-    c.circles = base.map(p => ({
-      x: c.x + p.x * W,
-      y: c.y + p.y * H,
-      r: p.r * W
-    }));
-  }
+    
+    // Update position
+    camX += velX;
+    camY += velY;
+    
+    // Friction
+    velX *= onGround ? GROUND_FRICTION : AIR_FRICTION;
+    
+    // Angular
+    angVel *= onGround ? 0.4 : 0.992;
+    angle += angVel;
 }
-
-
-
-function recycleDarkClouds() {
-  const MAX_CLOUD_H = DARK_H;
-
-  const TOP_LIMIT = DEADZONE;
-  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_CLOUD_H;
-
-  for (let c of darkClouds) {
-
-    if (c.y < TOP_LIMIT - REUSE_DISTANCE) {
-      c.y = BOTTOM_LIMIT - Math.random() * 1200;
-      c.x = randX();
-    }
-
-    else if (c.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
-      c.y = TOP_LIMIT + Math.random() * 1200;
-      c.x = randX();
-    }
-
-    c.el.style.left = c.x + "px";
-    c.el.style.top = c.y + "px";
-
-    c.rects = DARK_RECTS.map(r => ({
-      x: c.x + r.x * DARK_W,
-      y: c.y + r.y * DARK_H,
-      w: r.w * DARK_W,
-      h: r.h * DARK_H
-    }));
-  }
-}
-
-function recycleBlackHoles() {
-  const MAX_H = BH_SIZE; // Black hole height
-
-  const TOP_LIMIT = DEADZONE;
-  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_H;
-
-  for (let bh of blackHoles) {
-
-    if (bh.y < TOP_LIMIT - REUSE_DISTANCE) {
-      bh.y = TOP_LIMIT + Math.random() * (BOTTOM_LIMIT - TOP_LIMIT);
-      bh.x = randX();
-      bh.rotation = 0;
-      bh.el.style.transform = '';
-    }
-
-    else if (bh.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
-      bh.y = TOP_LIMIT + Math.random() * (BOTTOM_LIMIT - TOP_LIMIT);
-      bh.x = randX();
-      bh.rotation = 0;
-      bh.el.style.transform = '';
-    }
-
-    bh.el.style.left = bh.x + "px";
-    bh.el.style.top = bh.y + "px";
-  }
-}
-
-function recyclePushables() {
-  const MAX_H = 550; // Pushable height
-
-  const TOP_LIMIT = DEADZONE;
-  const BOTTOM_LIMIT = GROUND_Y - DEADZONE - MAX_H;
-
-  for (let p of pushables) {
-
-    if (p.y < TOP_LIMIT - REUSE_DISTANCE) {
-      p.y = BOTTOM_LIMIT - Math.random() * 1200;
-      p.x = randX();
-      p.velX = 0;
-      p.velY = 0;
-    }
-
-    else if (p.y > BOTTOM_LIMIT + REUSE_DISTANCE) {
-      p.y = TOP_LIMIT + Math.random() * 1200;
-      p.x = randX();
-      p.velX = 0;
-      p.velY = 0;
-    }
-
-    p.el.style.left = p.x + "px";
-    p.el.style.top = p.y + "px";
-  }
-}
-
-
 
 function resolveCollisions() {
-  let onGround = false;
-
-  const muKinetic = 0.08;
-  const r = PLAYER_W * 0.45;
-  const I = 2.5 * r * r;
-
-  const PLAYER_COLLIDERS = getPlayerColliders();
-  const bodyCX = camX + PLAYER_X;
-  const bodyCY = camY + PLAYER_Y;
-
-  const contacts = [];
-
-  for (const cloud of clouds) {
-
-    if (Math.abs(cloud.y - (camY + PLAYER_Y)) > 900)
-      continue;
-
-    for (const c of cloud.circles) {
-      const cx = c.x;
-      const cy = c.y;
-      const cr = c.r;
-
-      for (const p of PLAYER_COLLIDERS) {
-        const dx = p.x - cx;
-        const dy = p.y - cy;
+    let onGround = false;
+    const px = camX + PLAYER_X;
+    const py = camY + PLAYER_Y;
+    const pr = PLAYER_RADIUS;
+    
+    // Cloud collisions
+    for (const cloud of clouds) {
+        const dx = px - cloud.x;
+        const dy = py - cloud.centerY;
         const distSq = dx * dx + dy * dy;
-        const minDist = p.r + cr;
-        if (distSq >= minDist * minDist) continue;
-
-        const dist = Math.sqrt(distSq) || 0.00001;
-        const nx = dx / dist;
-        const ny = dy / dist;
-
-        contacts.push({
-          nx,
-          ny,
-          penetration: (minDist - dist),
-          px: p.x,
-          py: p.y
-        });
-      }
-    }
-  }
-
-
-
-  if (contacts.length > 0) {
-    let nx = 0, ny = 0, depth = 0;
-
-    for (const c of contacts) {
-      nx += c.nx;
-      ny += c.ny;
-      depth += c.penetration;
-    }
-
-    nx /= contacts.length;
-    ny /= contacts.length;
-    depth /= contacts.length;
-
-    const len = Math.hypot(nx, ny) || 0.00001;
-    nx /= len;
-    ny /= len;
-
-    const ref = contacts[0];
-    const px = ref.px;
-    const py = ref.py;
-
-    const rx = px - bodyCX;
-    const ry = py - bodyCY;
-
-    const relVX = velX - (-angVel * ry);
-    const relVY = velY + (angVel * rx);
-
-    const relNormal = relVX * nx + relVY * ny;
-
-    if (relNormal < 0) {
-      const speed = Math.hypot(relVX, relVY);
-      const e = restitutionFromSpeed(speed);
-
-      const rCrossN = rx * ny - ry * nx;
-      const denom = (1 / MASS) + (rCrossN * rCrossN) / I;
-
-      const j = -(1 + e) * relNormal / denom;
-
-      velX += (j * nx) / MASS;
-      velY += (j * ny) / MASS;
-      angVel += (rCrossN * j) / I;
-
-      const vtX = relVX - relNormal * nx;
-      const vtY = relVY - relNormal * ny;
-      const vt = Math.hypot(vtX, vtY);
-
-      if (vt > 0.0001) {
-        const tx = vtX / vt;
-        const ty = vtY / vt;
-
-        let jt = -vt / denom;
-        const maxFriction = muKinetic * Math.abs(j);
-        jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
-
-        velX += (jt * tx) / MASS;
-        velY += (jt * ty) / MASS;
-        angVel += (rCrossN * jt) / I;
-      }
-    }
-
-    const MAX_SPIN = 0.05;
-    angVel = Math.max(-MAX_SPIN, Math.min(MAX_SPIN, angVel));
-
-    const k_slop = 1.5;
-    const percent = 0.45;
-    const corr = Math.max(depth - k_slop, 0) * percent;
-    const MAX_CORR = 8;
-    const finalCorr = Math.min(corr, MAX_CORR);
-
-    camX += nx * finalCorr;
-    camY += ny * finalCorr;
-  }
-
-  for (const cloud of darkClouds) {
-    for (const rect of cloud.rects) {
-      for (const p of PLAYER_COLLIDERS) {
-        const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
-        const nearestY = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
-        const dx = p.x - nearestX;
-        const dy = p.y - nearestY;
-
-        if (dx * dx + dy * dy < p.r * p.r && !grabbedByDarkCloud) {
-          grabbedByDarkCloud = true;
-          releaseTime = performance.now() + 1500;
-          grabbedCloud = cloud;
-
-          freezeX = camX;
-          freezeY = camY;
-          velX = velY = 0;
-          angVel = 0;
-
-          earnings *= 0.5;
-
-          skeleton.style.display = "block";
-          sprite.style.display = "block";
-
-          let showSkeleton = false;
-          skeletonFlashInterval = setInterval(() => {
-            showSkeleton = !showSkeleton;
-            skeleton.style.display = showSkeleton ? "block" : "none";
-            sprite.style.display = showSkeleton ? "none" : "block";
-          }, 90);
-
-          return false;
+        const minDist = pr + cloud.radius;
+        
+        if (distSq < minDist * minDist && distSq > 0.001) {
+            const dist = Math.sqrt(distSq);
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const overlap = minDist - dist;
+            
+            // Push out
+            camX += nx * overlap * 0.6;
+            camY += ny * overlap * 0.6;
+            
+            const relVel = velX * nx + velY * ny;
+            
+            if (relVel < 0) {
+                const influence = cloud.influence || {};
+                const role = cloud.role || 'normal';
+                
+                if (role === 'stopper') {
+                    velX *= 0.4;
+                    velY *= -0.05;
+                    if (Math.abs(velY) < 2) velY = 0;
+                } else if (role === 'ambient') {
+                    // Weak interaction for ambient clouds
+                    const bounce = 0.15;
+                    velX -= (1 + bounce) * relVel * nx * 0.3;
+                    velY -= (1 + bounce) * relVel * ny * 0.3;
+                    velX *= 0.98;
+                    velY *= 0.98;
+                } else {
+                    // Normal cloud bounce
+                    const bounce = influence.bounce ?? CLOUD_BOUNCE;
+                    velX -= (1 + bounce) * relVel * nx;
+                    velY -= (1 + bounce) * relVel * ny;
+                    
+                    const friction = influence.friction ?? CLOUD_FRICTION;
+                    const tangX = velX - (velX * nx + velY * ny) * nx;
+                    const tangY = velY - (velX * nx + velY * ny) * ny;
+                    velX -= tangX * (1 - friction);
+                    velY -= tangY * (1 - friction);
+                    
+                    // Apply influence deltas
+                    velX += influence.vx_delta || 0;
+                    velY += influence.vy_delta || 0;
+                    
+                    velX *= 0.92;
+                    velY *= 0.92;
+                }
+                
+                // Add some spin on collision
+                angVel += (nx * velY - ny * velX) * 0.01;
+            }
         }
-      }
     }
-  }
-
-  for (const bh of blackHoles) {
-  const bx = bh.x + BH_SIZE / 2;
-  const by = bh.y + BH_SIZE / 2;
-
-  for (const p of PLAYER_COLLIDERS) {
-    const dx = p.x - bx;
-    const dy = p.y - by;
-
-    if (dx * dx + dy * dy < (BH_RADIUS + p.r) ** 2) {
-      enterBlackHole(bh);
-      return false;
+    
+    // Ground collision
+    if (py + pr >= GROUND_COLLISION_Y) {
+        camY = GROUND_COLLISION_Y - pr - PLAYER_Y;
+        if (velY > 2) {
+            velY = -velY * 0.2;
+            velX *= 0.7;
+        } else {
+            velY = 0;
+            velX *= GROUND_FRICTION;
+            onGround = true;
+        }
     }
-  }
+    
+    return onGround;
 }
 
-  if (tank) {
-  const rect = { x: tank.x, y: tank.y, w: 400, h: 300 };
-
-  for (const p of PLAYER_COLLIDERS) {
-    const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
-    const nearestY = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
-    const dx = p.x - nearestX;
-    const dy = p.y - nearestY;
-
-    if (dx * dx + dy * dy < p.r * p.r) {
-      earnings = Math.min(earnings * 5, targetPayout);              //  MULTIPLIER
-      showMultiplier(5);
-
-      tank.el.remove();
-      tank = null;
-
-      setTimeout(hideMultiplier, 1200);
-      break;
+function checkFlip() {
+    angleAccumulator += angVel;
+    if (Math.abs(angleAccumulator) >= Math.PI * 2) {
+        showFlipText(angleAccumulator > 0 ? "BACKFLIP!" : "FRONTFLIP!");
+        angleAccumulator = 0;
     }
-  }
 }
 
-  if (camp) {
-  const rect = { x: camp.x, y: camp.y, w: 800, h: 600 };
+// ===============================================================
+// INITIALIZATION
+// ===============================================================
 
-  for (const p of PLAYER_COLLIDERS) {
-    const nearestX = Math.max(rect.x, Math.min(p.x, rect.x + rect.w));
-    const nearestY = Math.max(rect.y, Math.min(p.y, rect.y + rect.h));
-    const dx = p.x - nearestX;
-    const dy = p.y - nearestY;
-
-    if (dx * dx + dy * dy < p.r * p.r) {
-      earnings *= 50;              // MULTIPLIER
-      showMultiplier(50);
-
-      camp.el.remove();
-      camp = null;
-
-      setTimeout(hideMultiplier, 1200);
-      break;
+function init() {
+    scaleGame();
+    window.addEventListener("resize", scaleGame);
+    
+    createStarfield();
+    createPlane();
+    setupGround();
+    updateBalanceUI();
+    setupEventListeners();
+    
+    if (!gameLoopRunning) {
+        gameLoopRunning = true;
+        requestAnimationFrame(update);
     }
-  }
+    
+    console.log("🎮 Drop the Boss - Ready!");
 }
 
+function scaleGame() {
+    const scale = Math.min(
+        window.innerWidth / SCREEN_W,
+        window.innerHeight / SCREEN_H
+    ) * 0.9;
+    gameScale.style.setProperty('--game-scale', scale);
+}
 
-  let lowest = -Infinity;
-  for (const p of PLAYER_COLLIDERS) {
-    const bottom = p.y + p.r;
-    if (bottom > lowest) lowest = bottom;
-  }
+function setupGround() {
+    ground.style.height = (GROUND_HEIGHT * 1.3) + "px";
+    ground.style.top = GROUND_Y + "px";
+    ground.style.width = "16400px";
+    ground.style.backgroundSize = "8200px 130%";
+}
 
-  const playerBottom = lowest;
+// ===============================================================
+// UI CONTROLS
+// ===============================================================
 
-  if (playerBottom >= GROUND_Y && !inBlackHole) {
-    const penetration = playerBottom - GROUND_Y;
-    camY -= penetration;
+function updateBalanceUI() {
+    balanceEl.textContent = `Balance ₹${balance.toFixed(2)}`;
+    betInput.value = betAmount;
+    betBtn.disabled = betAmount > balance || betAmount <= 0 || fallStarted || betPlaced || isDying;
+}
 
-    const speed = Math.hypot(velX, velY);
-    const e = restitutionFromSpeed(speed);
+function lockBetUI() {
+    plusBtn.disabled = minusBtn.disabled = betInput.disabled = betBtn.disabled = true;
+    document.querySelectorAll(".chip").forEach(c => c.disabled = true);
+}
 
-    if (speed > 0.4) {
-      velY = -Math.abs(velY) * e;
-      velY *= 0.65;
+function unlockBetUI() {
+    plusBtn.disabled = minusBtn.disabled = betInput.disabled = betBtn.disabled = false;
+    document.querySelectorAll(".chip").forEach(c => c.disabled = false);
+}
 
-      const MAX_BOUNCE = 14;
-      if (Math.abs(velY) > MAX_BOUNCE) velY = -MAX_BOUNCE;
+function showMultiplier(m) {
+    multiplierEl.textContent = `×${m.toFixed(2)}`;
+    multiplierEl.style.display = "block";
+}
 
-      angVel *= 0.85;
-    } else {
-      velX *= 0.85;
-      velY = 0;
-      angVel *= 0.6;
-      onGround = true;
-    }
-  }
+function hideMultiplier() {
+    multiplierEl.style.display = "none";
+}
 
-  // Handle pushable collisions
-  for (const p of pushables) {
-    const px = p.x + 275;
-    const py = p.y + 275;
-    const pr = 150;
+function showFlipText(text) {
+    flipTextEl.textContent = text;
+    flipTextEl.style.display = "block";
+    setTimeout(() => flipTextEl.style.display = "none", 600);
+}
 
-    // Optimization: Skip pushables that are too far from the player
-    const playerX = camX + PLAYER_X;
+function showScore() {
+    scoreEl.textContent = `₹${displayedScore.toFixed(2)}`;
+}
+
+function updateDebug() {
+    if (!DEBUG || !debugEl) return;
+    
     const playerY = camY + PLAYER_Y;
-    const dxToPlayer = px - playerX;
-    const dyToPlayer = py - playerY;
-    const distToPlayerSq = dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer;
-    const maxDist = 1000; // Only check pushables within 1000 pixels
-    if (distToPlayerSq > maxDist * maxDist) continue;
+    const speed = Math.hypot(velX, velY);
+    
+    debugEl.innerHTML = `
+        Pos: (${(camX + PLAYER_X).toFixed(0)}, ${playerY.toFixed(0)})<br>
+        Vel: (${velX.toFixed(2)}, ${velY.toFixed(2)}) | Speed: ${speed.toFixed(2)}<br>
+        Outcome: ${currentSession?.outcomeType || 'N/A'}<br>
+        Target: ₹${currentSession?.targetPayout || 0}<br>
+        Score: ₹${displayedScore.toFixed(2)}<br>
+        Clouds: ${clouds.length}<br>
+        FallStarted: ${fallStarted}
+    `;
+}
 
-    const contacts = [];
+function setupEventListeners() {
+    plusBtn.onclick = () => {
+        if (fallStarted || betPlaced || isDying) return;
+        if (betAmount + 10 <= balance) betAmount += 10;
+        updateBalanceUI();
+    };
+    
+    minusBtn.onclick = () => {
+        if (fallStarted || betPlaced || isDying) return;
+        betAmount = Math.max(1, betAmount - 10);
+        updateBalanceUI();
+    };
+    
+    betInput.oninput = () => {
+        if (fallStarted || betPlaced || isDying) return;
+        betAmount = Math.max(1, Math.min(balance, Number(betInput.value) || 1));
+        updateBalanceUI();
+    };
+    
+    document.querySelectorAll(".chip").forEach(c => {
+        c.onclick = () => {
+            if (fallStarted || betPlaced || isDying) return;
+            const v = c.dataset.v;
+            if (v === "max") betAmount = balance;
+            else betAmount = Math.min(balance, betAmount + Number(v));
+            updateBalanceUI();
+        };
+    });
+    
+    bonusToggle.onclick = () => {
+        if (fallStarted || betPlaced || isDying) return;
+        bonusMode = !bonusMode;
+        bonusToggle.classList.toggle("active");
+    };
+    
+    betBtn.onclick = placeBet;
+}
 
-    for (const pc of PLAYER_COLLIDERS) {
-      const dx = pc.x - px;
-      const dy = pc.y - py;
-      const distSq = dx * dx + dy * dy;
-      const minDist = pc.r + pr;
-      if (distSq >= minDist * minDist) continue;
+// ===============================================================
+// BACKGROUND
+// ===============================================================
 
-      const dist = Math.sqrt(distSq) || 0.00001;
-      const nx = dx / dist;
-      const ny = dy / dist;
-      const penetration = minDist - dist;
+function createStarfield() {
+    const sf = document.getElementById('starfield');
+    sf.innerHTML = '';
+    for (let i = 0; i < 200; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 100 + '%';
+        star.style.animationDelay = Math.random() * 2 + 's';
+        sf.appendChild(star);
+    }
+}
 
-      contacts.push({
-        nx,
-        ny,
-        penetration,
-        px: pc.x,
-        py: pc.y
-      });
+function createPlane() {
+    const existing = world.querySelector('.plane');
+    if (existing) existing.remove();
+    
+    const plane = document.createElement("div");
+    plane.className = "plane";
+    plane.style.cssText = `
+        width: ${SCREEN_W}px;
+        height: ${SCREEN_H}px;
+        background: url('items/plane.png') no-repeat center/contain;
+        position: absolute;
+        left: 0;
+        top: 0;
+        z-index: -1;
+    `;
+    world.appendChild(plane);
+}
+
+// ===============================================================
+// SCORE FROM BACKEND
+// ===============================================================
+
+function getScoreAtY(y) {
+    if (!scoreProgression || scoreProgression.length === 0) {
+        return 0;
     }
 
-    if (contacts.length > 0) {
-      let nx = 0, ny = 0, depth = 0;
+    for (let i = 0; i < scoreProgression.length - 1; i++) {
+        const a = scoreProgression[i];
+        const b = scoreProgression[i + 1];
 
-      for (const c of contacts) {
-        nx += c.nx;
-        ny += c.ny;
-        depth += c.penetration;
-      }
-
-      nx /= contacts.length;
-      ny /= contacts.length;
-      depth /= contacts.length;
-
-      const len = Math.hypot(nx, ny) || 0.00001;
-      nx /= len;
-      ny /= len;
-
-      const ref = contacts[0];
-      const px = ref.px;
-      const py = ref.py;
-
-      const rx = px - bodyCX;
-      const ry = py - bodyCY;
-
-      const relVX = velX - (-angVel * ry);
-      const relVY = velY + (angVel * rx);
-
-      const relNormal = relVX * nx + relVY * ny;
-
-      if (relNormal < 0) {
-        const speed = Math.hypot(relVX, relVY);
-        const e = restitutionFromSpeed(speed);
-
-        const rCrossN = rx * ny - ry * nx;
-        const denom = (1 / MASS) + (rCrossN * rCrossN) / I;
-
-        const j = -(1 + e) * relNormal / denom;
-
-        velX += (j * nx) / MASS;
-        velY += (j * ny) / MASS;
-        angVel += (rCrossN * j) / I;
-
-        const vtX = relVX - relNormal * nx;
-        const vtY = relVY - relNormal * ny;
-        const vt = Math.hypot(vtX, vtY);
-
-        if (vt > 0.0001) {
-          const tx = vtX / vt;
-          const ty = vtY / vt;
-
-          let jt = -vt / denom;
-          const maxFriction = muKinetic * Math.abs(j);
-          jt = Math.max(-maxFriction, Math.min(maxFriction, jt));
-
-          velX += (jt * tx) / MASS;
-          velY += (jt * ty) / MASS;
-          angVel += (rCrossN * jt) / I;
+        if (y >= a.y && y <= b.y) {
+            const t = (y - a.y) / (b.y - a.y);
+            return a.score + (b.score - a.score) * t;
         }
-      }
-
-      // Apply force to pushable with reduced movement to simulate mass
-      const pushForce = 2.0;
-      p.velX += -nx * pushForce * 0.5;
-      p.velY += -ny * pushForce * 0.5;
-
-      // Apply stronger reaction force to player in opposite direction for resistance feel
-      velX += nx * pushForce * 0.8;
-      velY += ny * pushForce * 0.8;
-
-      // Separation to make pushables solid
-      const k_slop = 1.5;
-      const percent = 0.45;
-      const corr = Math.max(depth - k_slop, 0) * percent;
-      const MAX_CORR = 8;
-      const finalCorr = Math.min(corr, MAX_CORR);
-
-      camX += nx * finalCorr;
-      camY += ny * finalCorr;
-      p.x -= nx * finalCorr;
-      p.y -= ny * finalCorr;
     }
-  }
 
-  return onGround;
+    const last = scoreProgression[scoreProgression.length - 1];
+    return y >= last.y ? last.score : 0;
 }
 
-let stuckLastY = 0;
-let stuckStartTime = null;
-const STUCK_TIME_LIMIT = 3000;
-
-let hardStuckStart = null;
-let lastEarnings = 0;
-const HARD_STUCK_TIME = 6000; //6sec
-const HARD_MOVEMENT_THRESHOLD = 25; 
-
-function checkStuck() {
-
-  if (inBlackHole) return;
-  if (bhAnimating) return;
-
-  if (!betPlaced || !fallStarted) {
-    stuckStartTime = null;
-    hardStuckStart = null;
-    return;
-  }
-
-  const movement = Math.abs(camY - stuckLastY);
-  stuckLastY = camY;
-
-  if (movement < 5) {
-    if (stuckStartTime === null)
-      stuckStartTime = performance.now();
-    else if (performance.now() - stuckStartTime >= STUCK_TIME_LIMIT)
-      hardResetWorld(true, 2000);
-  } else {
-    stuckStartTime = null;
-  }
-
-  const now = performance.now();
-
-  if (hardStuckStart === null) {
-    hardStuckStart = now;
-    lastEarnings = earnings;
-    return;
-  }
-
-  const elapsed = now - hardStuckStart;
-  const totalMovement = Math.abs(camY - freezeY); 
-
-  const barelyMoving =
-    Math.abs(velY) < 0.6 &&
-    Math.abs(velX) < 0.6 &&
-    totalMovement < HARD_MOVEMENT_THRESHOLD;
-
-  const noProgress = Math.abs(earnings - lastEarnings) < 0.5;
-
-  if (barelyMoving && noProgress && elapsed >= HARD_STUCK_TIME) {
-    hardResetWorld(true, 2000);
-    hardStuckStart = null;
-  }
-
-  if (elapsed >= HARD_STUCK_TIME) {
-    hardStuckStart = now;
-    lastEarnings = earnings;
-  }
+function updateScoreFromPosition() {
+    const playerY = camY + PLAYER_Y;
+    displayedScore = getScoreAtY(playerY);
+    showScore();
 }
 
-//======black hole logic=====
+// ===============================================================
+// API COMMUNICATION
+// ===============================================================
 
+async function placeBet(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    }
 
-function startBlackHoleAnimation(type, x, y, bh = null) {
-  bhAnimating = true;
-  bhAnimType = type;
-  bhAnimStartTime = performance.now();
-  bhAnimStartSize = type === 'enter' ? 150 : 800;
-  bhAnimEndSize = type === 'enter' ? 800 : 150;
+    if (fallStarted || betPlaced || isDying || isPlacingBet) return;
 
-  bhAnimEl = document.createElement("div");
-  bhAnimEl.className = "black-hole";
-  bhAnimEl.style.width = bhAnimStartSize + "px";
-  bhAnimEl.style.height = bhAnimStartSize + "px";
-  bhAnimEl.style.left = (x - bhAnimStartSize / 2) + "px";
-  bhAnimEl.style.top = (y - bhAnimStartSize / 2) + "px";
-  bhAnimEl.style.background = `url('items/black_hole_1.png') no-repeat center/contain`;
-  bhAnimEl.dataset.x = x;
-  bhAnimEl.dataset.y = y;
-  world.appendChild(bhAnimEl);
+    isPlacingBet = true;
+    betBtn.disabled = true;
 
-  if (type === 'enter' && bh) {
-    bh.el.remove();
-    blackHoles.splice(blackHoles.indexOf(bh), 1);
-  }
+    const effectiveBet = bonusMode ? betAmount * 10 : betAmount;
+    if (effectiveBet > balance || effectiveBet < 1) {
+        isPlacingBet = false;
+        betBtn.disabled = false;
+        return;
+    }
+    
+    try {
+        console.log("📡 Placing bet...");
+        const res = await fetch('/api/bet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: 'default',
+                betAmount: effectiveBet,
+                bonusMode
+            })
+        });
+        
+        if (!res.ok) {
+            console.error('Bet failed:', res.status);
+            isPlacingBet = false;
+            betBtn.disabled = false;
+            return;
+        }
+        
+        const data = await res.json();
+        console.log('🎯 Game Generated:', data.outcomeType, '→ ₹' + data.targetPayout);
+        
+        currentSession = {
+            id: data.sessionId,
+            targetPayout: data.targetPayout,
+            multiplier: data.multiplier,
+            outcomeType: data.outcomeType
+        };
+        currentScript = data.script;
+        balance = data.balance;
+        updateBalanceUI();
+        
+        scoreProgression = data.script.scoreProgression || [];
+        stopAtY = data.script.stopAtY || GROUND_Y;
+        stopMethod = data.script.stopMethod || 'ground';
+        targetScore = data.targetPayout;
+        
+        visualRng = createRNG(data.seed).visual;
+        
+        if (currentScript.immediateDeath) {
+            betPlaced = true;
+            lockBetUI();
+            startDeathAnimation(currentScript.deathAnimation || 'implode');
+        } else {
+            startGame();
+        }
+    } catch (e) {
+        console.error('Bet error:', e);
+        isPlacingBet = false;
+        betBtn.disabled = false;
+    }
 }
 
-function enterBlackHole(bh) {
-  startBlackHoleAnimation('enter', bh.x + 50, bh.y + 50, bh);
+async function resolveGame() {
+    if (!currentSession) return;
+    
+    try {
+        const res = await fetch('/api/resolve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: currentSession.id,
+                userId: 'default'
+            })
+        });
+        
+        const data = await res.json();
+        balance = data.balance;
+        displayedScore = data.payout;
+        updateBalanceUI();
+        showScore();
+    } catch (e) {
+        console.error('Resolve error:', e);
+    }
 }
 
-function enterBlackHoleLogic() {
-  inBlackHole = true;
-  bhStartTime = performance.now();
-
-  bhReturnX = camX;
-  bhReturnY = camY;
-
-  bhTargetMultiplier = Math.random() * 15 + 1; // Random multiplier between 1 and 16
-  bhCurrentMultiplier = 1;
-  bhRiseHeight = 0;
-
-  fallScorePaused = true;
-
-  originalEarnings = earnings; // Store original earnings before multiplier
-
-  camX = VOID_ZONE_X;
-  camY = VOID_START_Y;
-
-  velX = 0;
-  velY = 0;
-  angVel = 0;
-
-  bhMovingBgEl = document.createElement("div");
-  bhMovingBgEl.style.position = "absolute";
-  bhMovingBgEl.style.width = VOID_BG_WIDTH + "px";
-  bhMovingBgEl.style.height = VOID_BG_HEIGHT + "px";
-  bhMovingBgEl.style.left =
-  (SCREEN_W - VOID_BG_WIDTH) / 2 + "px";
-
-  bhMovingBgEl.style.top = VOID_ZONE_Y + "px";
-  bhMovingBgEl.style.backgroundImage = "url('items/Bonus_bg.png')";
-  bhMovingBgEl.style.backgroundRepeat = "no-repeat";
-  bhMovingBgEl.style.backgroundSize = VOID_BG_WIDTH + "px " + VOID_BG_HEIGHT + "px";
-  bhMovingBgEl.style.backgroundPosition = "0 0";
-  bhMovingBgEl.style.zIndex = "11";
-
-  world.appendChild(bhMovingBgEl);
-
-  // Swap sprite to jetpack in void zone
-  originalSpriteBg = sprite.style.backgroundImage;
-  sprite.style.backgroundImage = "url('items/jetpack.png')";
-
-  showMultiplier(bhCurrentMultiplier);
+async function cancelGame() {
+    if (!currentSession) return;
+    
+    try {
+        await fetch('/api/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: currentSession.id,
+                userId: 'default'
+            })
+        });
+        
+        const res = await fetch('/api/balance?userId=default');
+        balance = (await res.json()).balance;
+        updateBalanceUI();
+    } catch (e) {
+        console.error('Cancel error:', e);
+    }
 }
 
+// ===============================================================
+// DEATH ANIMATION
+// ===============================================================
 
-
-function exitBlackHole() {
-  inBlackHole = false;
-  fallScorePaused = false;
-  earnings += fallEarnings;
-  fallEarnings = 0;
-
-  camX = bhReturnX;
-  camY = bhReturnY;
-
-  velX = 0;
-  velY = 0;
-  angVel = 0;
-
-  // Clear void sprites
-  voidSprites.forEach(sprite => sprite.el.remove());
-  voidSprites.length = 0;
-
-  // Restore original sprite
-  sprite.style.backgroundImage = originalSpriteBg;
-
-  // Set exit position for animation
-  bhExitX = camX + PLAYER_X;
-  bhExitY = camY + PLAYER_Y;
-
-  // Start black hole exit animation
-  startBlackHoleAnimation('exit', bhExitX, bhExitY);
-
-  // Start sprite exit animation
-  exitingAnimation = true;
-  exitAnimStart = performance.now();
-
-  hideMultiplier();
-  showScore();
+function startDeathAnimation(type = 'implode') {
+    console.log("💀 IMMEDIATE DEATH");
+    
+    isDying = true;
+    deathAnimStart = performance.now();
+    deathAnimType = type;
+    
+    camX = camY = 0;
+    angle = 0;
+    
+    sprite.style.display = "block";
+    sprite.style.opacity = "1";
+    skeleton.style.display = "none";
+    
+    render();
 }
 
+function updateDeathAnimation() {
+    const elapsed = performance.now() - deathAnimStart;
+    const progress = Math.min(elapsed / DEATH_ANIM_DURATION, 1);
+    
+    if (deathAnimType === 'implode') {
+        let scale, rotation, opacity = 1;
+        const shake = Math.sin(elapsed / 20) * (1 - progress) * 15;
+        
+        if (progress < 0.2) {
+            scale = 1 + (progress / 0.2) * 0.4;
+            rotation = 0;
+        } else if (progress < 0.7) {
+            scale = 1.4 - (progress - 0.2) * 0.2;
+            rotation = (progress - 0.2) * Math.PI * 3;
+            
+            const flashPeriod = 100 - progress * 60;
+            const showSkel = Math.floor(elapsed / flashPeriod) % 2 === 0;
+            sprite.style.display = showSkel ? "none" : "block";
+            skeleton.style.display = showSkel ? "block" : "none";
+        } else {
+            const shrinkT = (progress - 0.7) / 0.3;
+            scale = 1.2 * (1 - shrinkT * shrinkT);
+            rotation = Math.PI * 3 + shrinkT * Math.PI * 2;
+            opacity = 1 - shrinkT;
+            
+            sprite.style.display = "block";
+            skeleton.style.display = "block";
+        }
+        
+        const transform = `translate(calc(-50% + ${shake}px), -50%) scale(${Math.max(0, scale)}) rotate(${rotation}rad)`;
+        sprite.style.transform = transform;
+        skeleton.style.transform = transform;
+        sprite.style.opacity = opacity;
+        skeleton.style.opacity = opacity;
+    }
+    
+    if (progress >= 1) {
+        finishDeath();
+        return false;
+    }
+    
+    return true;
+}
 
+function finishDeath() {
+    isDying = false;
+    displayedScore = 0;
+    
+    sprite.style.display = "none";
+    skeleton.style.display = "none";
+    sprite.style.opacity = "1";
+    skeleton.style.opacity = "1";
+    sprite.style.transform = "translate(-50%, -50%)";
+    skeleton.style.transform = "translate(-50%, -50%)";
+    
+    if (runOverEl) {
+        runOverEl.innerHTML = `
+            <div style="font-size: 72px; margin-bottom: 20px;">💀</div>
+            <div>DEAD</div>
+            <div style="font-size: 24px; margin-top: 10px;">Lost ₹${betAmount.toFixed(2)}</div>
+        `;
+        runOverEl.style.display = "flex";
+    }
+    
+    cancelGame();
+    setTimeout(resetWorld, 2500);
+}
 
+// ===============================================================
+// GAME FLOW
+// ===============================================================
+
+function startGame() {
+    console.log("🚀 Starting game...");
+    
+    clearWorld();
+    spawnFromScript(currentScript);
+    
+    // CRITICAL: Initialize physics state
+    camX = 0;
+    camY = SPAWN_START_Y - PLAYER_Y;  // Start at correct spawn position
+    velX = 0;
+    velY = 5;  // Initial downward velocity
+    angle = 0;
+    angVel = 0;
+    angleAccumulator = 0;
+    displayedScore = 0;
+    landedTime = 0;
+    gameStopped = false;
+    
+    // Set game flags
+    inBlackHole = false;
+    bhAnimating = false;
+    grabbedByDarkCloud = false;
+    fallStarted = true;  // THIS ENABLES PHYSICS
+    betPlaced = true;
+    betResolved = false;
+    isPlacingBet = false;
+    
+    // Show sprite
+    sprite.style.display = "block";
+    sprite.style.opacity = "1";
+    sprite.style.transform = "translate(-50%, -50%)";
+    skeleton.style.display = "none";
+    
+    lockBetUI();
+    
+    console.log(`   Outcome: ${currentSession.outcomeType} → ₹${currentSession.targetPayout}`);
+    console.log(`   Stop at Y=${stopAtY} (${stopMethod})`);
+    console.log(`   Clouds: ${clouds.length}`);
+    console.log(`   fallStarted: ${fallStarted}`);
+}
+
+function clearWorld() {
+    [...clouds, ...darkClouds, ...blackHoles, ...collectibles].forEach(o => o.el?.remove());
+    clouds.length = 0;
+    darkClouds.length = 0;
+    blackHoles.length = 0;
+    collectibles.length = 0;
+    if (tank?.el) tank.el.remove();
+    if (camp?.el) camp.el.remove();
+    tank = camp = null;
+}
+
+function spawnFromScript(script) {
+    if (!script) return;
+    
+    for (const s of script.spawns || []) {
+        switch (s.type) {
+            case 'cloud':
+                spawnCloud(s);
+                break;
+            case 'darkcloud':
+                spawnDarkCloud(s.x, s.y);
+                break;
+            case 'blackhole':
+                spawnBlackHole(s.x, s.y, s.multiplier, s.payout);
+                break;
+        }
+    }
+    
+    for (const g of script.groundObjects || []) {
+        if (g.type === 'tank') spawnTank(g.x, g.y, g.payout);
+        else if (g.type === 'camp') spawnCamp(g.x, g.y, g.payout);
+    }
+    
+    for (const c of script.collectibles || []) {
+        spawnCollectible(c.x, c.y, c.type);
+    }
+    
+    console.log(`☁️ Spawned: ${clouds.length} clouds, ${darkClouds.length} dark, ${blackHoles.length} BH`);
+}
+
+// ===============================================================
+// SPAWNERS
+// ===============================================================
+
+function spawnCloud(data) {
+    const pick = visualRng() < 0.5 ? 1 : 2;
+    const el = document.createElement("div");
+    el.className = "cloud";
+    
+    let W, H;
+    if (pick === 1) {
+        W = CLOUD1_W;
+        H = CLOUD1_H;
+        el.style.background = "url('clouds/cloud4.png') no-repeat center/contain";
+    } else {
+        W = CLOUD2_W;
+        H = CLOUD2_H;
+        el.style.background = "url('clouds/cloud2.png') no-repeat center/contain";
+    }
+    
+    const scale = (data.radius || CLOUD_RADIUS) / 100;
+    W *= scale;
+    H *= scale;
+    
+    const role = data.role || 'normal';
+    
+    if (role === 'stopper') {
+        el.style.filter = "brightness(0.8) saturate(1.2)";
+        el.style.opacity = "0.9";
+    } else if (role === 'redirect') {
+        el.style.opacity = "0.95";
+    } else if (role === 'ambient') {
+        el.style.opacity = "0.6";
+    }
+    
+    el.style.width = W + "px";
+    el.style.height = H + "px";
+    el.style.left = (data.x - W / 2) + "px";
+    el.style.top = data.y + "px";
+    el.style.position = "absolute";
+    world.appendChild(el);
+    
+    const centerY = data.centerY || (data.y + H * 0.5);
+    
+    clouds.push({
+        x: data.x,
+        y: data.y,
+        centerY: centerY,
+        radius: data.radius || CLOUD_RADIUS,
+        el,
+        role,
+        influence: data.influence || {},
+        W, H
+    });
+}
+
+function spawnDarkCloud(x, y) {
+    const el = document.createElement("div");
+    el.className = "dark-cloud";
+    el.style.width = DARK_W + "px";
+    el.style.height = DARK_H + "px";
+    el.style.left = (x - DARK_W / 2) + "px";
+    el.style.top = y + "px";
+    el.style.position = "absolute";
+    world.appendChild(el);
+    
+    const rects = DARK_RECTS.map(r => ({
+        x: (x - DARK_W / 2) + r.x * DARK_W,
+        y: y + r.y * DARK_H,
+        w: r.w * DARK_W,
+        h: r.h * DARK_H
+    }));
+    
+    darkClouds.push({ x: x - DARK_W / 2, y, el, rects });
+}
+
+function spawnBlackHole(x, y, mult, payout) {
+    const el = document.createElement("div");
+    el.className = "black-hole";
+    el.style.width = BH_SIZE + "px";
+    el.style.height = BH_SIZE + "px";
+    el.style.left = (x - BH_SIZE / 2) + "px";
+    el.style.top = y + "px";
+    el.style.position = "absolute";
+    el.style.background = "url('items/black_hole_1.png') no-repeat center/contain";
+    world.appendChild(el);
+    
+    blackHoles.push({
+        x: x - BH_SIZE / 2,
+        y,
+        el,
+        rotation: 0,
+        multiplier: mult || 5,
+        payout: payout || 0
+    });
+}
+
+function spawnTank(x, y, payout) {
+    const W = 400, H = 300;
+    const el = document.createElement("div");
+    el.className = "tank";
+    el.style.cssText = `
+        width: ${W}px;
+        height: ${H}px;
+        left: ${x - W/2}px;
+        top: ${y - H}px;
+        position: absolute;
+        background: url('items/tank.png') no-repeat center/contain;
+    `;
+    world.appendChild(el);
+    tank = { x: x - W/2, y: y - H, el, w: W, h: H, multiplier: 5, payout: payout || 0 };
+}
+
+function spawnCamp(x, y, payout) {
+    const W = 800, H = 600;
+    const el = document.createElement("div");
+    el.className = "military-camp";
+    el.style.cssText = `
+        width: ${W}px;
+        height: ${H}px;
+        left: ${x - W/2}px;
+        top: ${y - H}px;
+        position: absolute;
+        background: url('items/camp.png') no-repeat center/contain;
+    `;
+    world.appendChild(el);
+    camp = { x: x - W/2, y: y - H, el, w: W, h: H, multiplier: 50, payout: payout || 0 };
+}
+
+function spawnCollectible(x, y, type) {
+    const SIZE = 80;
+    const el = document.createElement("div");
+    el.className = type === 'nuke' ? 'collectible nuke' : 'collectible note';
+    el.style.cssText = `
+        width: ${SIZE}px;
+        height: ${SIZE}px;
+        left: ${x - SIZE/2}px;
+        top: ${y - SIZE/2}px;
+        position: absolute;
+        background: url('items/${type === 'nuke' ? 'nuke' : 'notes'}.png') no-repeat center/contain;
+    `;
+    world.appendChild(el);
+    collectibles.push({ x, y, el, type, collected: false });
+}
+
+// ===============================================================
+// STOP DETECTION
+// ===============================================================
+
+function checkShouldStop() {
+    if (gameStopped) return true;
+    
+    const playerY = camY + PLAYER_Y;
+    const speed = Math.hypot(velX, velY);
+    
+    if (playerY >= stopAtY - 250 && speed < 3.5) {
+        if (landedTime === 0) {
+            landedTime = performance.now();
+        } else if (performance.now() - landedTime > 800) {
+            console.log(`🛑 Reached stop at Y=${playerY.toFixed(0)}`);
+            displayedScore = targetScore;
+            gameStopped = true;
+            completeGame();
+            return true;
+        }
+    } else {
+        landedTime = 0;
+    }
+    
+    return false;
+}
+
+// ===============================================================
+// GAME END
+// ===============================================================
+
+function completeGame() {
+    if (betResolved) return;
+    
+    console.log(`🎉 Complete: ₹${displayedScore.toFixed(2)}`);
+    betResolved = true;
+    fallStarted = false;
+    gameStopped = true;
+    
+    resolveGame();
+    
+    if (runOverEl) {
+        runOverEl.innerHTML = displayedScore > 0
+            ? `<div style="color: #0f0;">WIN!</div><div>₹${displayedScore.toFixed(2)}</div>`
+            : `<div>GAME OVER</div>`;
+        runOverEl.style.display = "flex";
+    }
+    
+    setTimeout(resetWorld, 2500);
+}
+
+function resetWorld() {
+    clearWorld();
+
+    camX = camY = velX = velY = angle = angVel = 0;
+    displayedScore = 0;
+    targetScore = 0;
+    scoreProgression = [];
+    landedTime = 0;
+    isDying = false;
+    gameStopped = false;
+    stopAtY = GROUND_Y;
+    stopMethod = 'ground';
+
+    currentSession = currentScript = null;
+    visualRng = Math.random;
+
+    betPlaced = betResolved = fallStarted = false;
+    inBlackHole = bhAnimating = grabbedByDarkCloud = exitingAnimation = false;
+    isPlacingBet = false;
+
+    if (skeletonFlashInterval) {
+        clearInterval(skeletonFlashInterval);
+        skeletonFlashInterval = null;
+    }
+
+    skeleton.style.display = "none";
+    sprite.style.display = "block";
+    sprite.style.opacity = "1";
+    sprite.style.transform = "translate(-50%, -50%)";
+
+    unlockBetUI();
+    updateBalanceUI();
+
+    if (runOverEl) setTimeout(() => runOverEl.style.display = "none", 500);
+
+    hideMultiplier();
+    createPlane();
+    render();
+}
+
+// ===============================================================
+// MAIN GAME LOOP
+// ===============================================================
 
 function update() {
+<<<<<<< HEAD
   if (!introFinished) return;
 
 if (bhAnimating) {
@@ -1778,38 +1986,41 @@ if (inBlackHole) {
         if (distSq < minDist * minDist) {
           pickedUp = true;
           break;
+=======
+    if (!gameLoopRunning) return;
+    
+    // Death animation
+    if (isDying) {
+        if (updateDeathAnimation()) {
+            render();
+>>>>>>> 1b90251 (stuff)
         }
-      }
-
-      if (pickedUp) {
-        earnings += c.value;
-        c.el.remove();
-        arr.splice(i, 1);
-      }
+        requestAnimationFrame(update);
+        return;
     }
-  }
+    
+    // Normal gameplay - THIS IS THE KEY SECTION
+    if (fallStarted && !gameStopped) {
+        // Apply collisions first
+        const onGround = resolveCollisions();
 
-  checkPickup(chains);
-  checkPickup(notes);
+        // Check if we should stop
+        if (checkShouldStop()) {
+            render();
+            requestAnimationFrame(update);
+            return;
+        }
 
-  if (onGround && fallStarted && !betResolved) {
-    if (landedTime === 0) {
-      landedTime = performance.now();
-    } else if (performance.now() - landedTime > 1000) {
-      betResolved = true;
-      const payout = earnings;
-      balance += payout;
-      runOverEl.innerHTML = `RUN OVER<br>Total Winnings: ₹${payout.toFixed(2)}`;
-      runOverEl.style.display = "block";
-      fallStarted = false;
-      betPlaced = false;
-      updateBalanceUI();
-
-      setTimeout(() => {
-        runOverEl.style.display = "none";
-        hardResetWorld(false, 0);
-      }, 5000);
+        // Apply physics (gravity, movement)
+        applyPhysics(onGround);
+        
+        // Check for flips
+        checkFlip();
+        
+        // Update score display
+        updateScoreFromPosition();
     }
+<<<<<<< HEAD
   } else {
     landedTime = 0;
   }
@@ -1820,46 +2031,51 @@ if (inBlackHole) {
   requestAnimationFrame(update);
   updateGroundEntitiesVisibility();
 
+=======
+    
+    render();
+    updateDebug();
+    requestAnimationFrame(update);
+>>>>>>> 1b90251 (stuff)
 }
+
+// ===============================================================
+// RENDER
+// ===============================================================
 
 function render() {
-  if (inBlackHole && bhShowcaseStart === 0) {
-    scoreEl.style.display = "none";
-    multiplierEl.classList.remove("showcase");
-    scoreEl.classList.remove("showcase");
-  } else {
-    scoreEl.style.display = "block";
-    const displayScore = (inBlackHole && bhShowcaseStart > 0) ? showcaseScore : earnings;
-    scoreEl.textContent = `₹${displayScore.toFixed(2)}`;
-    if (inBlackHole && bhShowcaseStart > 0) {
-      multiplierEl.classList.add("showcase");
-      scoreEl.classList.add("showcase");
-    } else {
-      multiplierEl.classList.remove("showcase");
-      scoreEl.classList.remove("showcase");
+    scoreEl.textContent = `₹${displayedScore.toFixed(2)}`;
+    world.style.transform = `translate(${-camX}px, ${-camY}px)`;
+    
+    if (!isDying) {
+        sprite.style.left = `${PLAYER_X}px`;
+        sprite.style.top = `${PLAYER_Y}px`;
+        sprite.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
+        
+        skeleton.style.left = `${PLAYER_X}px`;
+        skeleton.style.top = `${PLAYER_Y}px`;
+        skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
     }
-  }
-  world.style.transform = `translate(${-camX}px, ${-camY}px)`;
-  silverjetWrap.style.left = PLAYER_X + "px";
-  silverjetWrap.style.top = PLAYER_Y + "px";
-  player.style.left = (camX + PLAYER_X) + 'px';
-  player.style.top = (camY + PLAYER_Y) + 'px';
-  player.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-  sprite.style.left = (camX + PLAYER_X) + 'px';
-  sprite.style.top = (camY + PLAYER_Y) + 'px';
-  sprite.style.transform = `translate(-50%, -50%) rotate(${inBlackHole ? 0 : angle}rad)`;
-  skeleton.style.left = (camX + PLAYER_X) + 'px';
-  skeleton.style.top = (camY + PLAYER_Y) + 'px';
-  skeleton.style.transform = `translate(-50%, -50%) rotate(${angle}rad)`;
-
-  // Update pushable sprite positions
-  pushables.forEach(p => {
-    p.el.style.left = p.x + "px";
-    p.el.style.top = p.y + "px";
-  });
-
-  
-  
 }
 
-// Initial update() call removed; intro logic handles starting the game loop
+// ===============================================================
+// VISIBILITY
+// ===============================================================
+
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden && fallStarted && !betResolved) {
+        displayedScore = 0;
+        cancelGame();
+        if (runOverEl) {
+            runOverEl.innerHTML = "CRASHED<br>Tab Hidden";
+            runOverEl.style.display = "flex";
+        }
+        setTimeout(resetWorld, 2000);
+    }
+});
+
+// ===============================================================
+// START!
+// ===============================================================
+
+init();

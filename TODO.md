@@ -1,0 +1,3 @@
+- [ ] Edit carrot-math/simulate.js to fix import for createRng
+- [ ] Edit carrot-math/outcome.js to fix import for rand
+- [ ] Run node simulate.js to verify the fix

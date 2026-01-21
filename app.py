@@ -1,40 +1,23 @@
-from flask import Flask, request, jsonify, send_from_directory
-import random
+from flask import Flask, send_from_directory
+from api import api_blueprint
 
 app = Flask(__name__, static_folder='public', static_url_path='')
+
+app.register_blueprint(api_blueprint, url_prefix='/api')
+
 
 @app.route('/')
 def index():
     return send_from_directory('public', 'index.html')
 
-@app.route('/bet', methods=['POST'])
-def bet():
-    data = request.get_json()
-    bet_amount = data.get('betAmount')
 
-    if not bet_amount or bet_amount <= 0:
-        return jsonify({'error': 'Invalid bet'}), 400
+@app.route('/<path:path>')
+def serve_static(path):
+    return send_from_directory('public', path)
 
-    bet_amount = float(bet_amount)
-    r = random.random()
-
-    if r < 0.55:
-        multiplier = 0
-    elif r < 0.80:
-        multiplier = 0.6
-    elif r < 0.93:
-        multiplier = 1.3
-    elif r < 0.98:
-        multiplier = 2.0
-    else:
-        multiplier = 4.0
-
-    target_payout = bet_amount * multiplier
-
-    return jsonify({
-        'targetPayout': target_payout,
-        'cloudPlan': ['support', 'boost', 'boost', 'terminator']
-    })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3000)
+    print("=" * 50)
+    print("Server running on http://localhost:3000")
+    print("=" * 50)
+    app.run(debug=True, host='0.0.0.0', port=3000)
